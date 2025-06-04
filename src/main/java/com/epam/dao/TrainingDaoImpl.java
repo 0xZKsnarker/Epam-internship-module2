@@ -12,14 +12,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLong; // Required for AtomicLong
 
 @Repository
 public class TrainingDaoImpl implements TrainingDao {
-    private static final Logger log = LoggerFactory.getLogger(TraineeDaoImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(TrainingDaoImpl.class);
 
     private final Map<Long, Training> trainingMap;
-    private static final AtomicLong SEQ = new AtomicLong(1);
+
+    @Autowired
+    private AtomicLong trainingIdGenerator;
 
     @Autowired
     public TrainingDaoImpl(@Qualifier("trainingStorage") Map<Long, Training> trainingMap) {
@@ -29,7 +31,8 @@ public class TrainingDaoImpl implements TrainingDao {
     @Override
     public void create(Training training) {
         if (training.getId() == 0) {
-            training.setId(SEQ.getAndIncrement());
+            // Use the shared ID generator
+            training.setId(trainingIdGenerator.getAndIncrement());
         }
         trainingMap.put(training.getId(), training);
         log.debug("DAO stored training {}", training.getId());

@@ -24,7 +24,7 @@ public class TraineeServiceImpl implements TraineeService {
 
     @Override
     public Trainee create(Trainee trainee) {
-        trainee.setUsername(generateUniqueUsername(trainee.getFirstName(), trainee.getLastName()));
+        trainee.setUsername(AuthUtils.generateUsername(trainee.getFirstName(), trainee.getLastName(), this::usernameExists));
         trainee.setPassword(AuthUtils.randomPassword(10));
         traineeDao.create(trainee);
         log.info("Created trainee {}", trainee.getUsername());
@@ -56,17 +56,6 @@ public class TraineeServiceImpl implements TraineeService {
         List<Trainee> list = traineeDao.findAll();
         log.debug("findAll() -> {} trainees", list.size());
         return list;
-    }
-
-    private String generateUniqueUsername(String first, String last) {
-        String base = (first + "." + last).toLowerCase();
-        String candidate = base;
-        int suffix = 1;
-
-        while (usernameExists(candidate)) {
-            candidate = base + "." + suffix++;
-        }
-        return candidate;
     }
 
     private boolean usernameExists(String username) {

@@ -15,7 +15,7 @@ import java.util.Optional;
 
 @Repository
 public class TrainerDaoImpl implements TrainerDao {
-    private static final Logger log = LoggerFactory.getLogger(TrainingDaoImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(TrainerDaoImpl.class);
 
     private final Map<Long, Trainer> trainerMap;
 

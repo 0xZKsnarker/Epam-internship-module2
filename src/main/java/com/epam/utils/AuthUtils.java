@@ -19,7 +19,7 @@ public final class AuthUtils {
     }
 
     public static String generateUsername(String first, String last, Predicate<String> exists) {
-        String base = (first + "." + last).toLowerCase();
+        String base = (first + "." + last);
         String candidate = base;
         int suffix = 1;
         while (exists.test(candidate)) {

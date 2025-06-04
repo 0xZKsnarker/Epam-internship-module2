@@ -1,8 +1,6 @@
 package com.epam;
 
-import com.epam.Trainee;
-import com.epam.Trainer;
-import com.epam.Training;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,26 +11,35 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLong; // Required for AtomicLong
 
 @Component
 public class StorageLoader implements ApplicationListener<ContextRefreshedEvent> {
 
     private static final Logger log = LoggerFactory.getLogger(StorageLoader.class);
 
-    @Value("${storage.init.trainer}")  private String trainerFile;
-    @Value("${storage.init.trainee}")  private String traineeFile;
-    @Value("${storage.init.training}") private String trainingFile;
+    @Value("${storage.init.trainer}")
+    private String trainerFile;
+    @Value("${storage.init.trainee}")
+    private String traineeFile;
+    @Value("${storage.init.training}")
+    private String trainingFile;
 
-    @Qualifier("trainerStorage")  @Autowired private Map<Long, Trainer>  trainerMap;
-    @Qualifier("traineeStorage")  @Autowired private Map<Long, Trainee>  traineeMap;
-    @Qualifier("trainingStorage") @Autowired private Map<Long, Training> trainingMap;
+    @Qualifier("trainerStorage")
+    @Autowired
+    private Map<Long, Trainer>  trainerMap;
+    @Qualifier("traineeStorage")
+    @Autowired
+    private Map<Long, Trainee>  traineeMap;
+    @Qualifier("trainingStorage")
+    @Autowired
+    private Map<Long, Training> trainingMap;
 
-    private static final AtomicLong TRAINING_ID_GEN = new AtomicLong(1);
+    @Autowired
+    private AtomicLong trainingIdGenerator;
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
@@ -41,24 +48,22 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
         loadTrainings();
     }
 
-    /* ---------------------------------------------------------
-       Trainer CSV: first,last,username,password,isActive,specialization,userId
-       --------------------------------------------------------- */
+
     private void loadTrainers() {
-        try (BufferedReader br = Files.newBufferedReader(Paths.get(trainerFile))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getClass().getClassLoader().getResourceAsStream(trainerFile)))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("#")) continue;
 
                 String[] p = line.split(",");
                 Trainer t = new Trainer(
-                        p[0].trim(),                          // first name
-                        p[1].trim(),                          // last  name
-                        p[2].trim(),                          // username
-                        p[3].trim(),                          // password
-                        Boolean.parseBoolean(p[4].trim()),    // isActive
-                        p[5].trim(),                          // specialization
-                        Long.parseLong(p[6].trim())           // userId
+                        p[0].trim(),// first name
+                        p[1].trim(),// last  name
+                        p[2].trim(),// username
+                        p[3].trim(),// password
+                        Boolean.parseBoolean(p[4].trim()),// isActive
+                        p[5].trim(),// specialization
+                        Long.parseLong(p[6].trim()) // userId
                 );
                 trainerMap.putIfAbsent(t.getUserId(), t);
             }
@@ -68,26 +73,22 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
         }
     }
 
-    /* ---------------------------------------------------------
-       Trainee CSV: first,last,username,password,isActive,dob,address,userId
-       dob format: yyyy-MM-dd
-       --------------------------------------------------------- */
     private void loadTrainees() {
-        try (BufferedReader br = Files.newBufferedReader(Paths.get(traineeFile))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getClass().getClassLoader().getResourceAsStream(traineeFile)))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("#")) continue;
 
                 String[] p = line.split(",");
                 Trainee t = new Trainee(
-                        p[0].trim(),                          // first
-                        p[1].trim(),                          // last
-                        p[2].trim(),                          // username
-                        p[3].trim(),                          // password
-                        Boolean.parseBoolean(p[4].trim()),    // isActive
-                        LocalDate.parse(p[5].trim()),         // dob
-                        p[6].trim(),                          // address
-                        Long.parseLong(p[7].trim())           // userId
+                        p[0].trim(), // first
+                        p[1].trim(), // last
+                        p[2].trim(), // username
+                        p[3].trim(), // password
+                        Boolean.parseBoolean(p[4].trim()), // isActive
+                        LocalDate.parse(p[5].trim()), // dob
+                        p[6].trim(), // address
+                        Long.parseLong(p[7].trim()) // userId
                 );
                 traineeMap.putIfAbsent(t.getUserId(), t);
             }
@@ -97,26 +98,23 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
         }
     }
 
-    /* ---------------------------------------------------------
-       Training CSV: traineeId,trainerId,name,type,date,duration
-       date format: yyyy-MM-dd
-       --------------------------------------------------------- */
+
     private void loadTrainings() {
-        try (BufferedReader br = Files.newBufferedReader(Paths.get(trainingFile))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getClass().getClassLoader().getResourceAsStream(trainingFile)))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("#")) continue;
 
                 String[] p = line.split(",");
                 Training tr = new Training(
-                        Long.parseLong(p[0].trim()),          // traineeId
-                        Long.parseLong(p[1].trim()),          // trainerId
-                        p[2].trim(),                          // training name
-                        p[3].trim(),                          // type
-                        LocalDate.parse(p[4].trim()),         // date
-                        Integer.parseInt(p[5].trim())         // duration
+                        Long.parseLong(p[0].trim()), // traineeId
+                        Long.parseLong(p[1].trim()), // trainerId
+                        p[2].trim(), // training name
+                        p[3].trim(), // type
+                        LocalDate.parse(p[4].trim()), // date
+                        Integer.parseInt(p[5].trim()) // duration
                 );
-                tr.setId(TRAINING_ID_GEN.getAndIncrement());
+                tr.setId(trainingIdGenerator.getAndIncrement());
                 trainingMap.put(tr.getId(), tr);
             }
             log.info("Loaded {}", trainingFile);

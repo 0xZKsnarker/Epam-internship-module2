@@ -24,7 +24,7 @@ public class TrainerServiceImpl implements TrainerService {
 
     @Override
     public Trainer create(Trainer trainer) {
-        trainer.setUsername(generateUniqueUsername(trainer.getFirstName(), trainer.getLastName()));
+        trainer.setUsername(AuthUtils.generateUsername(trainer.getFirstName(), trainer.getLastName(), this::usernameExists));
         trainer.setPassword(AuthUtils.randomPassword(10));
         trainerDao.create(trainer);
         log.info("Created trainer {}", trainer.getUsername());
@@ -50,17 +50,6 @@ public class TrainerServiceImpl implements TrainerService {
             List<Trainer> list = trainerDao.findAll();
             log.debug("findAll() -> {} trainers", list.size());
             return list;
-    }
-
-    private String generateUniqueUsername(String first, String last) {
-        String base = (first + "." + last).toLowerCase();
-        String candidate = base;
-        int suffix = 1;
-
-        while (usernameExists(candidate)) {
-            candidate = base + "." + suffix++;
-        }
-        return candidate;
     }
 
     private boolean usernameExists(String username) {
