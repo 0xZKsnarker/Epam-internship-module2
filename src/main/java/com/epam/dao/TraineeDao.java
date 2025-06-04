@@ -1,6 +1,6 @@
 package com.epam.dao;
 
-import com.epam.Trainee;
+import com.epam.domain.Trainee;
 
 import java.util.List;
 import java.util.Optional;

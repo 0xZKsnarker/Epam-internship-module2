@@ -1,6 +1,6 @@
 package com.epam.service;
 
-import com.epam.Trainer;
+import com.epam.domain.Trainer;
 
 import java.util.List;
 import java.util.Optional;

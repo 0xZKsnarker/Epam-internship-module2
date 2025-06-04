@@ -1,6 +1,6 @@
 package com.epam.dao;
 
-import com.epam.Training;
+import com.epam.domain.Training;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong; // Required for AtomicLong
+import java.util.concurrent.atomic.AtomicLong;
 
 @Repository
 public class TrainingDaoImpl implements TrainingDao {
@@ -29,9 +29,9 @@ public class TrainingDaoImpl implements TrainingDao {
     }
 
     @Override
+    //method to create a new training
     public void create(Training training) {
         if (training.getId() == 0) {
-            // Use the shared ID generator
             training.setId(trainingIdGenerator.getAndIncrement());
         }
         trainingMap.put(training.getId(), training);
@@ -39,6 +39,7 @@ public class TrainingDaoImpl implements TrainingDao {
 
     }
     @Override
+    //method to find training by id
     public Optional<Training> findById(Long id) {
         Optional<Training> result = Optional.ofNullable(trainingMap.get(id));
         log.debug("DAO read training {} -> {}", id, result.isPresent() ? "found" : "null");
@@ -46,6 +47,7 @@ public class TrainingDaoImpl implements TrainingDao {
     }
 
     @Override
+    //method to find all
     public List<Training> findAll() {
         List<Training> list = new ArrayList<>(trainingMap.values());
         log.debug("DAO read all trainings – returned {} record(s)", list.size());

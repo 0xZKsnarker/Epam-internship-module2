@@ -1,4 +1,4 @@
-package com.epam;
+package com.epam.facade;
 
 import com.epam.service.TraineeService;
 import com.epam.service.TrainerService;
@@ -12,18 +12,16 @@ public class GymFacade {
     private final TrainerService trainerService;
     private final TrainingService trainingService;
 
-    public GymFacade(TraineeService traineeService,
-                     TrainerService trainerService,
-                     TrainingService trainingService) {
+    public GymFacade(TraineeService traineeService, TrainerService trainerService, TrainingService trainingService) {
         this.traineeService  = traineeService;
         this.trainerService  = trainerService;
         this.trainingService = trainingService;
     }
 
-    public TraineeService  trainees()  {
+    public TraineeService trainees()  {
         return traineeService;
     }
-    public TrainerService  trainers()  {
+    public TrainerService trainers()  {
         return trainerService;
     }
     public TrainingService trainings() {

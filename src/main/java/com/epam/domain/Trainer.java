@@ -1,15 +1,17 @@
-package com.epam;
+package com.epam.domain;
 
 public class Trainer extends User {
 
     private long userId;
     private String specialization;
 
-    public Trainer(String firstName, String lastName, String username, String password, boolean isActive, String specalization, long userId) {
+    public Trainer(String firstName, String lastName, String username, String password, boolean isActive, String specialization, long userId) {
         super(firstName, lastName, username, password, isActive);
-        this.specialization = specalization;
+        this.specialization = specialization;
         this.userId = userId;
     }
+
+
 
     public long getUserId() {
         return userId;

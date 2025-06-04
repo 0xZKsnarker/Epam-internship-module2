@@ -1,11 +1,12 @@
 package com.epam.service;
 
-import com.epam.Training;
+import com.epam.domain.Training;
 import com.epam.dao.TrainingDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 import java.util.Optional;
@@ -17,11 +18,13 @@ public class TrainingServiceImpl implements TrainingService {
 
     private TrainingDao trainingDao;
 
+    // Sets the TrainingDao dependency via setter-based autowiring
     @Autowired
     public void setTrainingDao(TrainingDao trainingDao) {
         this.trainingDao = trainingDao;
     }
 
+    // Creates a new Training record
     @Override
     public Training create(Training training) {
         trainingDao.create(training);
@@ -30,6 +33,7 @@ public class TrainingServiceImpl implements TrainingService {
         return training;
     }
 
+    // Finds a Training record by its id
     @Override
     public Optional<Training> findById(Long id) {
         Optional<Training> opt = trainingDao.findById(id);
@@ -37,6 +41,7 @@ public class TrainingServiceImpl implements TrainingService {
         return opt;
     }
 
+    // Retrieves a list of all Training records
     @Override
     public List<Training> findAll() {
         List<Training> list = trainingDao.findAll();

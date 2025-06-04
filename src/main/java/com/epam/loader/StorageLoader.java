@@ -1,6 +1,9 @@
-package com.epam;
+package com.epam.loader;
 
 
+import com.epam.domain.Trainee;
+import com.epam.domain.Trainer;
+import com.epam.domain.Training;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +17,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong; // Required for AtomicLong
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class StorageLoader implements ApplicationListener<ContextRefreshedEvent> {

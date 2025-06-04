@@ -1,4 +1,4 @@
-package com.epam;
+package com.epam.domain;
 
 import java.time.LocalDate;
 

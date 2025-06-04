@@ -1,4 +1,4 @@
-package com.epam;
+package com.epam.domain;
 
 public class User {
     private String firstName;
