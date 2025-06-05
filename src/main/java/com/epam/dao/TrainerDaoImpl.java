@@ -62,4 +62,15 @@ public class TrainerDaoImpl implements TrainerDao {
         log.debug("DAO updated trainer {}", trainer.getUserId());
 
     }
+    @Override
+    public boolean usernameExists(String username) {
+        for (Trainer trainer : trainerMap.values()) {
+            if (trainer.getUsername() != null && trainer.getUsername().equals(username)) {
+                log.debug("DAO usernameExists check for '{}': true", username);
+                return true;
+            }
+        }
+        log.debug("DAO usernameExists check for '{}': false", username);
+        return false;
+    }
 }

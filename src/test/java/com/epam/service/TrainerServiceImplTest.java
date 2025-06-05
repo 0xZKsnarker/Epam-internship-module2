@@ -30,7 +30,7 @@ class TrainerServiceImplTest {
     // create() should generate username/password and persist the trainer
     @Test
     void createGeneratesCredentialsAndPersists() {
-        when(trainerDao.findAll()).thenReturn(Collections.emptyList());
+        when(trainerDao.usernameExists("John.Smith")).thenReturn(false);
         Trainer t = trainer(0, "John", "Smith", null);
 
         Trainer out = service.create(t);
@@ -44,13 +44,14 @@ class TrainerServiceImplTest {
     // create() should suffix username when a collision exists
     @Test
     void createResolvesUsernameCollision() {
-        Trainer existing = trainer(1, "John", "Smith", "John.Smith");
-        when(trainerDao.findAll()).thenReturn(List.of(existing));
-        Trainer t = trainer(0, "John", "Smith", null);
+        when(trainerDao.usernameExists("John.Smith")).thenReturn(true);
+        when(trainerDao.usernameExists("John.Smith.1")).thenReturn(false);
 
+        Trainer t = trainer(0, "John", "Smith", null);
         service.create(t);
 
         assertEquals("John.Smith.1", t.getUsername());
+        verify(trainerDao).create(t); // Also verify it's created
     }
 
     // update() should succeed when the record exists

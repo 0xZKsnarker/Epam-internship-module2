@@ -27,7 +27,7 @@ public class TraineeServiceImpl implements TraineeService {
     //Creates a new Trainee profile generates a unique username and a random password
     @Override
     public Trainee create(Trainee trainee) {
-        trainee.setUsername(AuthUtils.generateUsername(trainee.getFirstName(), trainee.getLastName(), this::usernameExists));
+        trainee.setUsername(AuthUtils.generateUsername(trainee.getFirstName(), trainee.getLastName(), traineeDao::usernameExists));
         trainee.setPassword(AuthUtils.randomPassword(10));
         traineeDao.create(trainee);
         log.info("Created trainee {}", trainee.getUsername());
@@ -73,15 +73,5 @@ public class TraineeServiceImpl implements TraineeService {
         List<Trainee> list = traineeDao.findAll();
         log.debug("findAll() -> {} trainees", list.size());
         return list;
-    }
-
-    //checks if a username already exists in the system.
-    private boolean usernameExists(String username) {
-        for (Trainee tr : traineeDao.findAll()) {
-            if (username.equals(tr.getUsername())) {
-                return true;
-            }
-        }
-        return false;
     }
 }

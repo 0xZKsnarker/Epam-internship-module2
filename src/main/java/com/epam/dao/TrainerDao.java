@@ -12,4 +12,5 @@ public interface TrainerDao {
     Optional<Trainer> findById(Long id);
     List<Trainer> findAll();
     void update(Trainer trainer);
+    boolean usernameExists(String username);
 }

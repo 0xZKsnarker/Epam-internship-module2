@@ -53,4 +53,5 @@ public class TrainingDaoImpl implements TrainingDao {
         log.debug("DAO read all trainings – returned {} record(s)", list.size());
         return list;
     }
+
 }

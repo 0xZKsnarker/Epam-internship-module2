@@ -12,4 +12,5 @@ public interface TraineeDao {
     List<Trainee> findAll();
     void update(Trainee trainee);
     void delete(Long id);
+    boolean usernameExists(String username);
 }

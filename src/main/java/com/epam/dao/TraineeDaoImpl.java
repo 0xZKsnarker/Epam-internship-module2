@@ -67,4 +67,16 @@ public class TraineeDaoImpl implements TraineeDao {
         traineeMap.remove(id);
         log.debug("DAO deleted trainee {}", id);
     }
+
+    @Override
+    public boolean usernameExists(String username) {
+        for (Trainee trainee : traineeMap.values()) {
+            if (trainee.getUsername() != null && trainee.getUsername().equals(username)) {
+                log.debug("DAO usernameExists check for '{}': true", username);
+                return true;
+            }
+        }
+        log.debug("DAO usernameExists check for '{}': false", username);
+        return false;
+    }
 }

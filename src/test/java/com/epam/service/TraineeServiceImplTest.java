@@ -31,12 +31,13 @@ class TraineeServiceImplTest {
     // create() should assign username/password and call dao.create()
     @Test
     void createGeneratesCredentialsAndPersists() {
-        when(traineeDao.findAll()).thenReturn(Collections.emptyList());
+        when(traineeDao.usernameExists("John.Smith")).thenReturn(false);
         Trainee t = sample(0, "John", "Smith", null);
 
         Trainee result = service.create(t);
 
-        assertNotNull(result.getUsername()); // username set
+        assertEquals("John.Smith", result.getUsername()); // Expect base username
+        assertNotNull(result.getPassword()); // username set
         assertEquals(10, result.getPassword().length()); // 10-char pwd
         verify(traineeDao).create(result);// persisted
     }
@@ -44,13 +45,14 @@ class TraineeServiceImplTest {
     // create() should suffix username when duplicate exists
     @Test
     void createResolvesUsernameCollision() {
-        Trainee existing = sample(1, "John", "Smith", "John.Smith");
-        when(traineeDao.findAll()).thenReturn(List.of(existing));
-        Trainee t = sample(0, "John", "Smith", null);
+        when(traineeDao.usernameExists("John.Smith")).thenReturn(true);
+        when(traineeDao.usernameExists("John.Smith.1")).thenReturn(false);
 
+        Trainee t = sample(0, "John", "Smith", null);
         service.create(t);
 
         assertEquals("John.Smith.1", t.getUsername());
+        verify(traineeDao).create(t); // Also verify it's created
     }
 
     // update() should forward to dao.update when record exists

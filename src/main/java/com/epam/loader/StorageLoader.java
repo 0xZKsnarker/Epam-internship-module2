@@ -1,13 +1,16 @@
 package com.epam.loader;
 
 
+import com.epam.dao.TraineeDao;
+import com.epam.dao.TrainerDao;
+import com.epam.dao.TrainingDao;
 import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
 import com.epam.domain.Training;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+// import org.springframework.beans.factory.annotation.Qualifier; // No longer needed for maps
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -16,7 +19,7 @@ import org.springframework.stereotype.Component;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.LocalDate;
-import java.util.Map;
+// import java.util.Map; // No longer directly using Maps here
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
@@ -31,18 +34,20 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
     @Value("${storage.init.training}")
     private String trainingFile;
 
-    @Qualifier("trainerStorage")
-    @Autowired
-    private Map<Long, Trainer>  trainerMap;
-    @Qualifier("traineeStorage")
-    @Autowired
-    private Map<Long, Trainee>  traineeMap;
-    @Qualifier("trainingStorage")
-    @Autowired
-    private Map<Long, Training> trainingMap;
+    // updated, using DAOs instead of map beans directly
+    private final TraineeDao traineeDao;
+    private final TrainerDao trainerDao;
+    private final TrainingDao trainingDao;
 
     @Autowired
     private AtomicLong trainingIdGenerator;
+
+    @Autowired
+    public StorageLoader(TraineeDao traineeDao, TrainerDao trainerDao, TrainingDao trainingDao) {
+        this.traineeDao = traineeDao;
+        this.trainerDao = trainerDao;
+        this.trainingDao = trainingDao;
+    }
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
@@ -68,7 +73,8 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
                         p[5].trim(),// specialization
                         Long.parseLong(p[6].trim()) // userId
                 );
-                trainerMap.putIfAbsent(t.getUserId(), t);
+
+                trainerDao.create(t);
             }
             log.info("Loaded {}", trainerFile);
         } catch (Exception e) {
@@ -93,7 +99,7 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
                         p[6].trim(), // address
                         Long.parseLong(p[7].trim()) // userId
                 );
-                traineeMap.putIfAbsent(t.getUserId(), t);
+                traineeDao.create(t);
             }
             log.info("Loaded {}", traineeFile);
         } catch (Exception e) {
@@ -118,7 +124,7 @@ public class StorageLoader implements ApplicationListener<ContextRefreshedEvent>
                         Integer.parseInt(p[5].trim()) // duration
                 );
                 tr.setId(trainingIdGenerator.getAndIncrement());
-                trainingMap.put(tr.getId(), tr);
+                trainingDao.create(tr);
             }
             log.info("Loaded {}", trainingFile);
         } catch (Exception e) {

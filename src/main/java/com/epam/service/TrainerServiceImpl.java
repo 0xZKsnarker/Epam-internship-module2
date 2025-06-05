@@ -27,7 +27,7 @@ public class TrainerServiceImpl implements TrainerService {
     // Creates a new Trainer profile generates a unique username and a random password
     @Override
     public Trainer create(Trainer trainer) {
-        trainer.setUsername(AuthUtils.generateUsername(trainer.getFirstName(), trainer.getLastName(), this::usernameExists));
+        trainer.setUsername(AuthUtils.generateUsername(trainer.getFirstName(), trainer.getLastName(), trainerDao::usernameExists));
         trainer.setPassword(AuthUtils.randomPassword(10));
         trainerDao.create(trainer);
         log.info("Created trainer {}", trainer.getUsername());
@@ -64,13 +64,4 @@ public class TrainerServiceImpl implements TrainerService {
         return list;
     }
 
-    // Checks if a username already exists in the system
-    private boolean usernameExists(String username) {
-        for (Trainer tr : trainerDao.findAll()) {
-            if (username.equals(tr.getUsername())) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
