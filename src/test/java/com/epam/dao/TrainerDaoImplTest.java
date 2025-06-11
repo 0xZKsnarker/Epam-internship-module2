@@ -1,82 +1,169 @@
 package com.epam.dao;
 
 import com.epam.domain.Trainer;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.TypedQuery;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.*;
 
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 
 class TrainerDaoImplTest {
 
-    // Build a DAO with its own storage map and a seeded AtomicLong
-    private TrainerDaoImpl newDao(long startId) {
-        Map<Long, Trainer> map = new HashMap<>();
-        TrainerDaoImpl dao = new TrainerDaoImpl(map);
-        try {
-            Field f = TrainerDaoImpl.class.getDeclaredField("trainerIdGenerator");
-            f.setAccessible(true);
-            f.set(dao, new AtomicLong(startId));
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
+    @Mock
+    private EntityManager entityManager;
+
+    @InjectMocks
+    private TrainerDaoImpl trainerDao;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+
+    @Test
+    @DisplayName("create() calls EntityManager.persist")
+    void create_persistsTrainer() {
+        Trainer trainer = new Trainer();
+        trainerDao.create(trainer);
+        verify(entityManager).persist(trainer);
+    }
+
+
+    @Nested
+    class FindById {
+
+        @Test
+        @DisplayName("findById() returns entity when present")
+        void returnsEntity() {
+            Trainer trainer = new Trainer();
+            when(entityManager.find(Trainer.class, 1L)).thenReturn(trainer);
+
+            Optional<Trainer> result = trainerDao.findById(1L);
+
+            assertTrue(result.isPresent());
+            assertSame(trainer, result.get());
         }
-        return dao;
+
+        @Test
+        @DisplayName("findById() returns empty when missing")
+        void returnsEmpty() {
+            when(entityManager.find(Trainer.class, 99L)).thenReturn(null);
+            assertTrue(trainerDao.findById(99L).isEmpty());
+        }
     }
 
-    // Convenience factory for Trainer objects
-    private Trainer newTrainer(long id) {
-        return new Trainer("John", "Smith", "john.smith", "pwd", true, "cardio", id);
-    }
 
-    // create() should assign an ID when userId == 0
     @Test
-    void createGeneratesIdWhenMissing() {
-        TrainerDaoImpl dao = newDao(1);
-        Trainer t = newTrainer(0);
-        dao.create(t);
-        assertEquals(1L, t.getUserId());
-        assertTrue(dao.findById(1L).isPresent());
+    @DisplayName("findAll() delegates to query result")
+    void findAll_returnsQueryList() {
+        @SuppressWarnings("unchecked")
+        TypedQuery<Trainer> query = mock(TypedQuery.class);
+        List<Trainer> expected = List.of(new Trainer(), new Trainer());
+
+        when(entityManager.createQuery("FROM Trainer", Trainer.class)).thenReturn(query);
+        when(query.getResultList()).thenReturn(expected);
+
+        assertEquals(expected, trainerDao.findAll());
     }
 
-    // create() should respect an already-set ID
+
     @Test
-    void createRespectsProvidedId() {
-        TrainerDaoImpl dao = newDao(50);
-        Trainer t = newTrainer(99);
-        dao.create(t);
-        assertEquals(99L, t.getUserId());
-        assertTrue(dao.findById(99L).isPresent());
+    @DisplayName("update() calls EntityManager.merge")
+    void update_mergesTrainer() {
+        Trainer trainer = new Trainer();
+        trainerDao.update(trainer);
+        verify(entityManager).merge(trainer);
     }
 
-    // findById() returns empty when record absent
-    @Test
-    void findByIdReturnsEmptyWhenAbsent() {
-        TrainerDaoImpl dao = newDao(1);
-        assertTrue(dao.findById(42L).isEmpty());
+    @Nested
+    class UsernameExists {
+
+        @Test
+        @DisplayName("usernameExists() is true when count > 0")
+        void returnsTrue() {
+            @SuppressWarnings("unchecked")
+            TypedQuery<Long> query = mock(TypedQuery.class);
+
+            when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(query);
+            when(query.setParameter("username", "john")).thenReturn(query);
+            when(query.getSingleResult()).thenReturn(5L);
+
+            assertTrue(trainerDao.usernameExists("john"));
+        }
+
+        @Test
+        @DisplayName("usernameExists() is false when count == 0")
+        void returnsFalse() {
+            @SuppressWarnings("unchecked")
+            TypedQuery<Long> query = mock(TypedQuery.class);
+
+            when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(query);
+            when(query.setParameter("username", "john")).thenReturn(query);
+            when(query.getSingleResult()).thenReturn(0L);
+
+            assertFalse(trainerDao.usernameExists("john"));
+        }
     }
 
-    // findAll() returns every stored trainer
-    @Test
-    void findAllReturnsAllStored() {
-        TrainerDaoImpl dao = newDao(1);
-        dao.create(newTrainer(0));
-        dao.create(newTrainer(0));
-        List<Trainer> all = dao.findAll();
-        assertEquals(2, all.size());
+
+    @Nested
+    class FindByUsername {
+
+        @Test
+        @DisplayName("findByUsername() returns entity when found")
+        void returnsEntity() {
+            @SuppressWarnings("unchecked")
+            TypedQuery<Trainer> query = mock(TypedQuery.class);
+            Trainer trainer = new Trainer();
+
+            when(entityManager.createQuery(anyString(), eq(Trainer.class))).thenReturn(query);
+            when(query.setParameter("username", "john")).thenReturn(query);
+            when(query.getSingleResult()).thenReturn(trainer);
+
+            Optional<Trainer> result = trainerDao.findByUsername("john");
+
+            assertTrue(result.isPresent());
+            assertSame(trainer, result.get());
+        }
+
+        @Test
+        @DisplayName("findByUsername() returns empty on NoResultException")
+        void returnsEmpty() {
+            @SuppressWarnings("unchecked")
+            TypedQuery<Trainer> query = mock(TypedQuery.class);
+
+            when(entityManager.createQuery(anyString(), eq(Trainer.class))).thenReturn(query);
+            when(query.setParameter("username", "john")).thenReturn(query);
+            when(query.getSingleResult()).thenThrow(NoResultException.class);
+
+            assertTrue(trainerDao.findByUsername("john").isEmpty());
+        }
     }
 
-    // update() should overwrite an existing record
+
     @Test
-    void updateReplacesExisting() {
-        TrainerDaoImpl dao = newDao(1);
-        Trainer original = newTrainer(10);
-        dao.create(original);
-        Trainer updated = new Trainer("Jane", "Doe", "jane.doe", "pwd2", true, "yoga", 10);
-        dao.update(updated);
-        Trainer fromDao = dao.findById(10L).orElseThrow();
-        assertEquals("Jane", fromDao.getFirstName());
-        assertEquals("yoga", fromDao.getSpecialization());
+    @DisplayName("findUnassignedTrainers() passes traineeUsername and returns list")
+    void unassignedTrainersQuery() {
+        @SuppressWarnings("unchecked")
+        TypedQuery<Trainer> query = mock(TypedQuery.class);
+        List<Trainer> expected = List.of(new Trainer());
+
+        when(entityManager.createQuery(startsWith("SELECT t FROM Trainer"), eq(Trainer.class)))
+                .thenReturn(query);
+        when(query.setParameter("traineeUsername", "alice")).thenReturn(query);
+        when(query.getResultList()).thenReturn(expected);
+
+        assertEquals(expected, trainerDao.findUnassignedTrainers("alice"));
     }
 }

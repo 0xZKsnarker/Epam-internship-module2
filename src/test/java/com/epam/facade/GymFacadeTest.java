@@ -27,25 +27,21 @@ class GymFacadeTest {
         facade = new GymFacade(traineeService, trainerService, trainingService);
     }
 
-    // trainees() should return the same instance that was injected
     @Test
     void traineesReturnsInjectedService() {
         assertSame(traineeService, facade.trainees());
     }
 
-    // trainers() should return the same instance that was injected
     @Test
     void trainersReturnsInjectedService() {
         assertSame(trainerService, facade.trainers());
     }
 
-    // trainings() should return the same instance that was injected
     @Test
     void trainingsReturnsInjectedService() {
         assertSame(trainingService, facade.trainings());
     }
 
-    // facade should let callers invoke underlying service methods transparently
     @Test
     void facadeDelegatesCalls() {
         facade.trainees().findAll();

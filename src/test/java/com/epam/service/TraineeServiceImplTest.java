@@ -1,14 +1,18 @@
 package com.epam.service;
 
 import com.epam.dao.TraineeDao;
+import com.epam.dao.TrainerDao;
 import com.epam.domain.Trainee;
+import com.epam.domain.Trainer;
+import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,98 +21,237 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TraineeServiceImplTest {
 
-    @Mock
-    private TraineeDao traineeDao;
+    @Mock  private TraineeDao traineeDao;
+    @Mock  private TrainerDao trainerDao;
 
     @InjectMocks
     private TraineeServiceImpl service;
 
-    private Trainee sample(long id, String first, String last, String uname) {
-        return new Trainee(first, last, uname, null, true,
-                LocalDate.of(1990, 1, 1), "Main", id);
+
+    private static User user(String first, String last, String uname, String pwd, boolean active) {
+        User u = new User();
+        u.setFirstName(first);
+        u.setLastName(last);
+        u.setUsername(uname);
+        u.setPassword(pwd);
+        u.setActive(active);
+        return u;
     }
 
-    // create() should assign username/password and call dao.create()
+    private static Trainee trainee(long id, String first, String last, String uname, String pwd) {
+        Trainee t = new Trainee();
+        t.setId(id);
+        t.setUser(user(first, last, uname, pwd, true));
+        return t;
+    }
+
+    private static Trainer trainer(long id, String first, String last, String uname) {
+        Trainer tr = new Trainer();
+        tr.setId(id);
+        tr.setUser(user(first, last, uname, "pwd", true));
+        return tr;
+    }
+
+
     @Test
-    void createGeneratesCredentialsAndPersists() {
+    @DisplayName("create() generates unique username & password then persists")
+    void create_generatesCredentialsAndPersists() {
         when(traineeDao.usernameExists("John.Smith")).thenReturn(false);
-        Trainee t = sample(0, "John", "Smith", null);
 
-        Trainee result = service.create(t);
+        Trainee toSave = trainee(0, "John", "Smith", null, null);
 
-        assertEquals("John.Smith", result.getUsername()); // Expect base username
-        assertNotNull(result.getPassword()); // username set
-        assertEquals(10, result.getPassword().length()); // 10-char pwd
-        verify(traineeDao).create(result);// persisted
+        Trainee result = service.create(toSave);
+
+        assertEquals("John.Smith", result.getUser().getUsername());
+        assertNotNull(result.getUser().getPassword());
+        assertEquals(10, result.getUser().getPassword().length());
+        verify(traineeDao).create(result);
     }
 
-    // create() should suffix username when duplicate exists
     @Test
-    void createResolvesUsernameCollision() {
+    @DisplayName("create() resolves username collision by suffixing")
+    void create_resolvesUsernameCollision() {
         when(traineeDao.usernameExists("John.Smith")).thenReturn(true);
         when(traineeDao.usernameExists("John.Smith.1")).thenReturn(false);
 
-        Trainee t = sample(0, "John", "Smith", null);
-        service.create(t);
+        Trainee toSave = trainee(0, "John", "Smith", null, null);
+        service.create(toSave);
 
-        assertEquals("John.Smith.1", t.getUsername());
-        verify(traineeDao).create(t); // Also verify it's created
+        assertEquals("John.Smith.1", toSave.getUser().getUsername());
+        verify(traineeDao).create(toSave);
     }
 
-    // update() should forward to dao.update when record exists
-    @Test
-    void updateSucceedsWhenPresent() {
-        Trainee stored = sample(2, "Ann", "Lee", "Ann.Lee");
-        when(traineeDao.findById(2L)).thenReturn(Optional.of(stored));
-        Trainee modified = sample(2, "Ann", "Lee", "Ann.Lee");
 
-        Trainee out = service.update(modified);
+    @Nested
+    class Update {
 
-        assertSame(modified, out);
-        verify(traineeDao).update(modified);
+        @Test
+        @DisplayName("update() forwards to DAO when entity exists")
+        void succeedsWhenFound() {
+            Trainee existing = trainee(1, "Ann", "Lee", "Ann.Lee", "pwd");
+            when(traineeDao.findById(1L)).thenReturn(Optional.of(existing));
+
+            Trainee modified = trainee(1, "Ann", "Lee", "Ann.Lee", "pwd2");
+            Trainee out = service.update(modified);
+
+            assertSame(modified, out);
+            verify(traineeDao).update(modified);
+        }
+
+        @Test
+        @DisplayName("update() throws when entity missing")
+        void throwsWhenMissing() {
+            when(traineeDao.findById(99L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class,
+                    () -> service.update(trainee(99, "Ghost", "User", "Ghost.User", "x")));
+            verify(traineeDao, never()).update(any());
+        }
     }
 
-    // update() should throw when record absent
-    @Test
-    void updateThrowsWhenMissing() {
-        when(traineeDao.findById(99L)).thenReturn(Optional.empty());
-        Trainee ghost = sample(99, "Ghost", "User", "Ghost.User");
 
-        assertThrows(ResourceNotFoundException.class, () -> service.update(ghost));
-        verify(traineeDao, never()).update(any());
-    }
-
-    // delete() should call dao.delete when record exists
     @Test
-    void deleteRemovesWhenPresent() {
-        when(traineeDao.findById(5L)).thenReturn(Optional.of(sample(5, "A", "B", "A.B")));
+    @DisplayName("delete() removes record when present")
+    void delete_removesWhenFound() {
+        when(traineeDao.findById(5L)).thenReturn(Optional.of(trainee(5, "A", "B", "A.B", "pwd")));
         service.delete(5L);
         verify(traineeDao).delete(5L);
     }
 
-    // delete() should throw when record absent
     @Test
-    void deleteThrowsWhenMissing() {
+    @DisplayName("delete() throws when record absent")
+    void delete_throwsWhenMissing() {
         when(traineeDao.findById(5L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> service.delete(5L));
         verify(traineeDao, never()).delete(anyLong());
     }
 
-    // findById() delegates to dao
     @Test
-    void findByIdDelegates() {
-        Trainee t = sample(3, "X", "Y", "X.Y");
-        when(traineeDao.findById(3L)).thenReturn(Optional.of(t));
-        Optional<Trainee> res = service.findById(3L);
-        assertTrue(res.isPresent());
-        assertSame(t, res.get());
+    @DisplayName("deleteByUsername() cascades to delete(id)")
+    void deleteByUsername_deletesViaId() {
+        Trainee t = trainee(7, "Z", "Q", "Z.Q", "pwd");
+        when(traineeDao.findByUsername("Z.Q")).thenReturn(Optional.of(t));
+        when(traineeDao.findById(7L)).thenReturn(Optional.of(t));
+        service.deleteByUsername("Z.Q");
+        verify(traineeDao).delete(7L);
     }
 
-    // findAll() delegates to dao
     @Test
-    void findAllDelegates() {
-        List<Trainee> list = List.of(sample(1, "A", "B", "A.B"));
+    @DisplayName("deleteByUsername() throws when absent")
+    void deleteByUsername_throwsWhenMissing() {
+        when(traineeDao.findByUsername("none")).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.deleteByUsername("none"));
+    }
+
+
+    @Nested
+    class CheckCredentials {
+
+        @Test
+        @DisplayName("returns true when username & password match")
+        void credentialsMatch() {
+            Trainee t = trainee(3, "A", "B", "A.B", "secret");
+            when(traineeDao.findByUsername("A.B")).thenReturn(Optional.of(t));
+            assertTrue(service.checkCredentials("A.B", "secret"));
+        }
+
+        @Test
+        @DisplayName("returns false on wrong password or missing user")
+        void credentialsDontMatch() {
+            Trainee t = trainee(3, "A", "B", "A.B", "secret");
+            when(traineeDao.findByUsername("A.B")).thenReturn(Optional.of(t));
+            assertFalse(service.checkCredentials("A.B", "oops"));
+            when(traineeDao.findByUsername("missing")).thenReturn(Optional.empty());
+            assertFalse(service.checkCredentials("missing", "any"));
+        }
+    }
+
+
+    @Test
+    @DisplayName("changePassword() updates the user’s password")
+    void changePassword_updatesField() {
+        Trainee t = trainee(4, "P", "Q", "P.Q", "old");
+        when(traineeDao.findByUsername("P.Q")).thenReturn(Optional.of(t));
+
+        service.changePassword("P.Q", "newPass");
+
+        assertEquals("newPass", t.getUser().getPassword());
+    }
+
+    @Test
+    @DisplayName("changePassword() throws for missing user")
+    void changePassword_missingUser() {
+        when(traineeDao.findByUsername("ghost")).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.changePassword("ghost", "x"));
+    }
+
+
+    @Test
+    @DisplayName("activateTrainee() flips active flag")
+    void activate_flipsFlag() {
+        Trainee t = trainee(6, "M", "N", "M.N", "pwd");
+        t.getUser().setActive(false);
+        when(traineeDao.findByUsername("M.N")).thenReturn(Optional.of(t));
+
+        service.activateTrainee("M.N", true);
+
+        assertTrue(t.getUser().isActive());
+    }
+
+
+    @Nested
+    class UpdateTrainers {
+
+        @Test
+        @DisplayName("updateTrainers() replaces trainee’s trainer set")
+        void updatesTrainerList() {
+            Trainee t = trainee(10, "Stu", "Dent", "Stu.Dent", "pwd");
+            when(traineeDao.findByUsername("Stu.Dent")).thenReturn(Optional.of(t));
+
+            Trainer tr1 = trainer(1, "Coach", "One", "Coach.One");
+            Trainer tr2 = trainer(2, "Coach", "Two", "Coach.Two");
+
+            when(trainerDao.findByUsername("Coach.One")).thenReturn(Optional.of(tr1));
+            when(trainerDao.findByUsername("Coach.Two")).thenReturn(Optional.of(tr2));
+
+            Trainee result = service.updateTrainers("Stu.Dent",
+                    List.of("Coach.One", "Coach.Two"));
+
+            assertEquals(Set.of(tr1, tr2), result.getTrainers());
+        }
+
+        @Test
+        @DisplayName("updateTrainers() throws when trainer missing")
+        void throwsWhenTrainerMissing() {
+            Trainee t = trainee(10, "Stu", "Dent", "Stu.Dent", "pwd");
+            when(traineeDao.findByUsername("Stu.Dent")).thenReturn(Optional.of(t));
+            when(trainerDao.findByUsername("Missing")).thenReturn(Optional.empty());
+
+            assertThrows(ResourceNotFoundException.class,
+                    () -> service.updateTrainers("Stu.Dent", List.of("Missing")));
+        }
+    }
+
+
+    @Test
+    void findById_delegates() {
+        Trainee t = trainee(3, "X", "Y", "X.Y", "pwd");
+        when(traineeDao.findById(3L)).thenReturn(Optional.of(t));
+        assertSame(t, service.findById(3L).orElseThrow());
+    }
+
+    @Test
+    void findAll_delegates() {
+        List<Trainee> list = List.of(trainee(1, "A", "B", "A.B", "pwd"));
         when(traineeDao.findAll()).thenReturn(list);
         assertEquals(list, service.findAll());
+    }
+
+    @Test
+    void findByUsername_delegates() {
+        Trainee t = trainee(8, "C", "D", "C.D", "pwd");
+        when(traineeDao.findByUsername("C.D")).thenReturn(Optional.of(t));
+        assertSame(t, service.findByUsername("C.D").orElseThrow());
     }
 }

@@ -1,4 +1,3 @@
-// Path: src/main/java/com/epam/Main.java
 package com.epam;
 
 import com.epam.config.AppConfig;
@@ -12,6 +11,6 @@ public class Main {
 
         GymFacade gymFacade = context.getBean(GymFacade.class);
         System.out.println("Gym CRM Application Started!");
-        System.out.println("\nGym CRM Application Finished.");
+        System.out.println("Gym CRM Application Finished.");
     }
 }

@@ -13,4 +13,6 @@ public interface TrainerDao {
     List<Trainer> findAll();
     void update(Trainer trainer);
     boolean usernameExists(String username);
+    Optional<Trainer> findByUsername(String username);
+    List<Trainer> findUnassignedTrainers(String traineeUsername);
 }

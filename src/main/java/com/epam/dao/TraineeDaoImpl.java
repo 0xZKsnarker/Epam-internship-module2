@@ -1,82 +1,69 @@
 package com.epam.dao;
 
 import com.epam.domain.Trainee;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Repository
 public class TraineeDaoImpl implements TraineeDao {
 
-    private final Map<Long, Trainee> traineeMap;
-    private static final Logger log = LoggerFactory.getLogger(TraineeDaoImpl.class);
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    // Inject the new ID generator
-    @Autowired
-    private AtomicLong traineeIdGenerator;
-
-    @Autowired
-    public TraineeDaoImpl(@Qualifier("traineeStorage") Map<Long, Trainee> traineeMap) {
-        this.traineeMap = traineeMap;
-    }
 
     @Override
-    //method to create a new trainee
     public void create(Trainee trainee) {
-        if (trainee.getUserId() == 0) { // Generate ID if not provided (e.g., 0L)
-            trainee.setUserId(traineeIdGenerator.getAndIncrement());
-        }
-        traineeMap.put(trainee.getUserId(), trainee);
-        log.debug("DAO stored trainee {}", trainee.getUserId());
-
+        entityManager.persist(trainee);
     }
+
     @Override
-    //method to find by id
     public Optional<Trainee> findById(Long id) {
-        Optional<Trainee> result = Optional.ofNullable(traineeMap.get(id));
-        log.debug("DAO read trainee {} -> {}", id, result.isPresent() ? "found" : "null");
-        return result;
+        return Optional.ofNullable(entityManager.find(Trainee.class, id));
     }
 
     @Override
-    //method to find all
     public List<Trainee> findAll() {
-        List<Trainee> list = new ArrayList<>(traineeMap.values());
-        log.debug("DAO read all trainees - returned {} record(s)", list.size());
-        return list;
+        return entityManager.createQuery("FROM Trainee", Trainee.class).getResultList();
     }
 
     @Override
-    //update method
     public void update(Trainee trainee) {
-        traineeMap.put(trainee.getUserId(), trainee);
-        log.debug("DAO updated trainee {}", trainee.getUserId());
+        entityManager.merge(trainee);
     }
 
     @Override
-    //delete method
     public void delete(Long id) {
-        traineeMap.remove(id);
-        log.debug("DAO deleted trainee {}", id);
+        Optional<Trainee> optionalTrainee = findById(id);
+        if (optionalTrainee.isPresent()) {
+            Trainee trainee = optionalTrainee.get();
+            entityManager.remove(trainee);
+        }
     }
 
     @Override
     public boolean usernameExists(String username) {
-        for (Trainee trainee : traineeMap.values()) {
-            if (trainee.getUsername() != null && trainee.getUsername().equals(username)) {
-                log.debug("DAO usernameExists check for '{}': true", username);
-                return true;
-            }
+        long count = entityManager.createQuery("SELECT COUNT(t) FROM Trainee t WHERE t.user.username = :username", Long.class)
+                .setParameter("username", username)
+                .getSingleResult();
+        return count > 0;
+    }
+
+    @Override
+    //method to find a trainee by username
+    public Optional<Trainee> findByUsername(String username) {
+        try {
+            Trainee trainee =
+                    entityManager.createQuery("SELECT t FROM Trainee t WHERE t.user.username = :username", Trainee.class)
+                    .setParameter("username", username)
+                    .getSingleResult();
+            return Optional.of(trainee);
+        } catch (NoResultException e) {
+            return Optional.empty();
         }
-        log.debug("DAO usernameExists check for '{}': false", username);
-        return false;
     }
 }

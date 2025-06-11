@@ -13,4 +13,6 @@ public interface TraineeDao {
     void update(Trainee trainee);
     void delete(Long id);
     boolean usernameExists(String username);
+    Optional<Trainee> findByUsername(String username);
+
 }

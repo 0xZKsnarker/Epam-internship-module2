@@ -1,76 +1,72 @@
 package com.epam.dao;
 
 import com.epam.domain.Trainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-
 
 @Repository
 public class TrainerDaoImpl implements TrainerDao {
-    private static final Logger log = LoggerFactory.getLogger(TrainerDaoImpl.class);
 
-    private final Map<Long, Trainer> trainerMap;
-
-    @Autowired
-    private AtomicLong trainerIdGenerator;
-
-    @Autowired
-    public TrainerDaoImpl(@Qualifier("trainerStorage") Map<Long, Trainer> trainerMap) {
-        this.trainerMap = trainerMap;
-    }
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
-    //method for create
     public void create(Trainer trainer) {
-        if (trainer.getUserId() == 0) {
-            trainer.setUserId(trainerIdGenerator.getAndIncrement());
-        }
-        trainerMap.put(trainer.getUserId(), trainer);
-        log.debug("DAO stored trainer {}", trainer.getUserId());
+        entityManager.persist(trainer);
     }
 
     @Override
-    //method to find trainer by id
     public Optional<Trainer> findById(Long id) {
-        Optional<Trainer> result = Optional.ofNullable(trainerMap.get(id));
-        log.debug("DAO read trainer {} -> {}", id, result.isPresent() ? "found" : "null");
-        return result;
+        return Optional.ofNullable(entityManager.find(Trainer.class, id));
     }
 
     @Override
-    //method to find all
     public List<Trainer> findAll() {
-        List<Trainer> list = new ArrayList<>(trainerMap.values());
-        log.debug("DAO read all trainers – returned {} record(s)", list.size());
-        return list;
+        return entityManager.createQuery("FROM Trainer", Trainer.class).getResultList();
     }
 
-
     @Override
-    //method to update trainer
     public void update(Trainer trainer) {
-        trainerMap.put(trainer.getUserId(), trainer);
-        log.debug("DAO updated trainer {}", trainer.getUserId());
-
+        entityManager.merge(trainer);
     }
+
     @Override
+    //checks if username exists
     public boolean usernameExists(String username) {
-        for (Trainer trainer : trainerMap.values()) {
-            if (trainer.getUsername() != null && trainer.getUsername().equals(username)) {
-                log.debug("DAO usernameExists check for '{}': true", username);
-                return true;
-            }
+        long count = entityManager.createQuery(
+                        "SELECT COUNT(t) FROM Trainer t WHERE t.user.username = :username", Long.class)
+                .setParameter("username", username)
+                .getSingleResult();
+        return count > 0;
+    }
+
+    @Override
+    //finds by username
+    public Optional<Trainer> findByUsername(String username) {
+        try {
+            Trainer trainer = entityManager.createQuery(
+                            "SELECT t FROM Trainer t WHERE t.user.username = :username", Trainer.class)
+                    .setParameter("username", username)
+                    .getSingleResult();
+            return Optional.of(trainer);
+        } catch (NoResultException e) {
+            return Optional.empty();
         }
-        log.debug("DAO usernameExists check for '{}': false", username);
-        return false;
+    }
+
+    @Override
+    public List<Trainer> findUnassignedTrainers(String traineeUsername) {
+        String jpql = "SELECT t FROM Trainer t WHERE t.id NOT IN (" +
+                "  SELECT tr.id FROM Trainee te JOIN te.trainers tr " +
+                "  WHERE te.user.username = :traineeUsername" +
+                ")";
+        return entityManager.createQuery(jpql, Trainer.class)
+                .setParameter("traineeUsername", traineeUsername)
+                .getResultList();
     }
 }

@@ -1,11 +1,23 @@
 package com.epam.domain;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
 public class User {
+    @Id
+    private Long id;
+    @Column(nullable = false)
     private String firstName;
+    @Column(nullable = false)
     private String lastName;
+    @Column(unique = true, nullable = false)
     private String username;
+    @Column(nullable = false)
     private String password;
+    @Column(nullable = false)
     private boolean isActive;
+
 
 
     public User(String firstName, String lastName, String username, String password, boolean isActive) {
@@ -14,6 +26,16 @@ public class User {
         this.username = username;
         this.password = password;
         this.isActive = isActive;
+    }
+    public User() {}
+
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public String getFirstName() {
@@ -66,4 +88,5 @@ public class User {
                 ", isActive=" + isActive +
                 '}';
     }
+
 }

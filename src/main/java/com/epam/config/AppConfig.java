@@ -1,68 +1,97 @@
 package com.epam.config;
 
-import com.epam.domain.Trainee;
-import com.epam.domain.Trainer;
-import com.epam.domain.Training;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.io.ClassPathResource; // Required for ClassPathResource
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong; // Required for AtomicLong
+import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import javax.sql.DataSource;
+import java.util.Properties;
 
 @Configuration
 @ComponentScan(basePackages = "com.epam")
-@PropertySource("classpath:application.properties")
+@EnableTransactionManagement
 public class AppConfig {
 
 
 
+    //uncomment this if you want to use h2 instead of mysql and remove the original datasource entitymanagerfactory
+    //also uncomment mysql driver in the pom and uncomment h2 driver dependency
+    /**
+     @Bean
+     public DataSource dataSource() {
+     DriverManagerDataSource dataSource = new DriverManagerDataSource();
+     dataSource.setDriverClassName("org.h2.Driver");
+     dataSource.setUrl("jdbc:h2:mem:gym_crm_db;DB_CLOSE_DELAY=-1"); // DB_CLOSE_DELAY=-1 keeps the DB alive
+     dataSource.setUsername("sa");
+     dataSource.setPassword("");
+     return dataSource;
+     }
+
+     @Bean
+     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+     LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
+     entityManagerFactoryBean.setDataSource(dataSource());
+     entityManagerFactoryBean.setPackagesToScan("com.epam.domain");
+     entityManagerFactoryBean.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+
+     Properties properties = new Properties();
+     properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+     // Changed the dialect for H2 compatibility
+     properties.setProperty("hibernate.dialect", "org.hibernate.dialect.H2Dialect");
+     properties.setProperty("hibernate.show_sql", "true"); // Optional: good for debugging
+
+     entityManagerFactoryBean.setJpaProperties(properties);
+
+     return entityManagerFactoryBean;
+     }
+     */
+
+
     @Bean
-    // Configures Spring to load properties from "application.properties" and resolve placeholders
-    public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer configurer = new PropertySourcesPlaceholderConfigurer();
-        configurer.setLocation(new ClassPathResource("application.properties"));
-        configurer.setIgnoreResourceNotFound(false);
-        return configurer;
+    public DataSource dataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        dataSource.setUrl("jdbc:mysql://localhost:3306/gym_crm_db");
+        dataSource.setUsername("springstudent");
+        dataSource.setPassword("springstudent");
+        return dataSource;
     }
 
-    //bean for trainee storage
-    @Bean(name = "traineeStorage")
-    public Map<Long, Trainee> traineeStorage() {
-        return new HashMap<>();
-    }
-
-    //bean for training storage
-    @Bean(name = "trainingStorage")
-    public Map<Long, Training> trainingStorage() {
-        return new HashMap<>();
-    }
-
-    //bean for trainer storage
-    @Bean(name = "trainerStorage")
-    public Map<Long, Trainer> trainerStorage() {
-        return new HashMap<>();
-    }
-
-    //global bean for training id
     @Bean
-    public AtomicLong trainingIdGenerator() {
-        return new AtomicLong(1);
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
+        entityManagerFactoryBean.setDataSource(dataSource());
+        entityManagerFactoryBean.setPackagesToScan("com.epam.domain");
+        entityManagerFactoryBean.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+
+        Properties properties = new Properties();
+        properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        entityManagerFactoryBean.setJpaProperties(properties);
+
+        return entityManagerFactoryBean;
     }
 
-    //global bean for trainee id
+    //transaction manager config
     @Bean
-    public AtomicLong traineeIdGenerator() {
-        return new AtomicLong(4);
+    public PlatformTransactionManager transactionManager() {
+        JpaTransactionManager jpaTransactionManager = new JpaTransactionManager();
+
+        jpaTransactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+        return jpaTransactionManager;
     }
 
-    //global bean for trainer id
+    //sql exception translation
     @Bean
-    public AtomicLong trainerIdGenerator() {
-        return new AtomicLong(4);
+    public PersistenceExceptionTranslationPostProcessor exceptionTranslation(){
+        return new PersistenceExceptionTranslationPostProcessor();
     }
+
 }

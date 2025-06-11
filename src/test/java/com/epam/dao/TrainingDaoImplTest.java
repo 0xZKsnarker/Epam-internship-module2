@@ -1,79 +1,192 @@
 package com.epam.dao;
 
 import com.epam.domain.Training;
+import com.epam.domain.TrainingType;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.*;
 
 import java.time.LocalDate;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class TrainingDaoImplTest {
 
-    // Build DAO with its own storage map and a seeded AtomicLong
-    private TrainingDaoImpl newDao(long startId) {
-        Map<Long, Training> map = new HashMap<>();
-        TrainingDaoImpl dao = new TrainingDaoImpl(map);
-        try {
-            Field f = TrainingDaoImpl.class.getDeclaredField("trainingIdGenerator");
-            f.setAccessible(true);
-            f.set(dao, new AtomicLong(startId));
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
+    @Mock
+    private EntityManager entityManager;
+    @Mock
+    private TypedQuery<Training> typedQuery;
+
+    @InjectMocks
+    private TrainingDaoImpl trainingDao;
+
+    @BeforeEach
+    void init() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+
+    @Test
+    @DisplayName("create() calls EntityManager.persist")
+    void create_persistsTraining() {
+        Training training = new Training();
+        trainingDao.create(training);
+        verify(entityManager).persist(training);
+    }
+
+
+    @Nested
+    class FindById {
+
+        @Test
+        @DisplayName("findById() returns entity when present")
+        void returnsEntity() {
+            Training training = new Training();
+            when(entityManager.find(Training.class, 1L)).thenReturn(training);
+
+            Optional<Training> result = trainingDao.findById(1L);
+
+            assertTrue(result.isPresent());
+            assertSame(training, result.get());
         }
-        return dao;
+
+        @Test
+        @DisplayName("findById() returns empty when absent")
+        void returnsEmpty() {
+            when(entityManager.find(Training.class, 42L)).thenReturn(null);
+            assertTrue(trainingDao.findById(42L).isEmpty());
+        }
     }
 
-    // Helper to create a Training instance with sensible defaults
-    private Training newTraining(long id) {
-        Training t = new Training(
-                1L,                       // traineeId
-                2L,                       // trainerId
-                "Morning Cardio",         // trainingName
-                "Cardio",                 // trainingType
-                LocalDate.now(),          // trainingDate
-                45                        // trainingDuration
-        );
-        t.setId(id);
-        return t;
-    }
 
-    // create() assigns an ID when id == 0
     @Test
-    void createGeneratesIdWhenMissing() {
-        TrainingDaoImpl dao = newDao(1);
-        Training tr = newTraining(0);
-        dao.create(tr);
-        assertEquals(1L, tr.getId());
-        assertTrue(dao.findById(1L).isPresent());
+    @DisplayName("findAll() returns query result")
+    void findAll_returnsList() {
+        @SuppressWarnings("unchecked")
+        TypedQuery<Training> query = mock(TypedQuery.class);
+        List<Training> expected = List.of(new Training(), new Training());
+
+        when(entityManager.createQuery("FROM Training", Training.class)).thenReturn(query);
+        when(query.getResultList()).thenReturn(expected);
+
+        assertEquals(expected, trainingDao.findAll());
     }
 
-    // create() respects an already-set ID
-    @Test
-    void createRespectsProvidedId() {
-        TrainingDaoImpl dao = newDao(50);
-        Training tr = newTraining(99);
-        dao.create(tr);
-        assertEquals(99L, tr.getId());
-        assertTrue(dao.findById(99L).isPresent());
+
+    private void mockCriteriaPipelineReturning(List<Training> expected) {
+        CriteriaBuilder cb = mock(CriteriaBuilder.class, RETURNS_DEEP_STUBS);
+        CriteriaQuery<Training> cq = mock(CriteriaQuery.class, RETURNS_DEEP_STUBS);
+        Root<Training> root = mock(Root.class, RETURNS_DEEP_STUBS);
+
+        when(entityManager.getCriteriaBuilder()).thenReturn(cb);
+        when(cb.createQuery(Training.class)).thenReturn(cq);
+        when(cq.from(Training.class)).thenReturn(root);
+
+        @SuppressWarnings("unchecked")
+        TypedQuery<Training> typedQuery = mock(TypedQuery.class);
+        when(entityManager.createQuery(cq)).thenReturn(typedQuery);
+        when(typedQuery.getResultList()).thenReturn(expected);
     }
 
-    // findById() returns empty when record absent
-    @Test
-    void findByIdReturnsEmptyWhenAbsent() {
-        TrainingDaoImpl dao = newDao(1);
-        assertTrue(dao.findById(42L).isEmpty());
+    @Nested
+    class FindForTraineeByCriteria {
+
+        @Test
+        @DisplayName("Should build query with all criteria when all are provided")
+        void returnsExpectedListWithAllCriteria() {
+            String username = "john.doe";
+            LocalDate fromDate = LocalDate.of(2025, 1, 1);
+            LocalDate toDate = LocalDate.of(2025, 12, 31);
+            String trainerName = "Alice";
+            TrainingType type = new TrainingType("Cardio");
+            List<Training> expected = Collections.singletonList(new Training());
+
+            String expectedJpql = "SELECT t FROM Training t WHERE t.trainee.user.username = :username" +
+                    " AND t.trainingDate >= :fromDate" +
+                    " AND t.trainingDate <= :toDate" +
+                    " AND t.trainer.user.firstName = :trainerName" +
+                    " AND t.trainingType = :type";
+
+            when(entityManager.createQuery(eq(expectedJpql), eq(Training.class))).thenReturn(typedQuery);
+            when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery); // Allow chaining
+            when(typedQuery.getResultList()).thenReturn(expected);
+
+            List<Training> actual = trainingDao.findForTraineeByCriteria(username, fromDate, toDate, trainerName, type);
+
+
+            assertEquals(expected, actual);
+
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<Object> valueCaptor = ArgumentCaptor.forClass(Object.class);
+            verify(typedQuery, new org.mockito.internal.verification.Times(5)).setParameter(keyCaptor.capture(), valueCaptor.capture());
+
+            Map<String, Object> params = new java.util.HashMap<>();
+            for (int i=0; i < keyCaptor.getAllValues().size(); i++) {
+                params.put(keyCaptor.getAllValues().get(i), valueCaptor.getAllValues().get(i));
+            }
+
+            assertEquals(username, params.get("username"));
+            assertEquals(fromDate, params.get("fromDate"));
+            assertEquals(toDate, params.get("toDate"));
+            assertEquals(trainerName, params.get("trainerName"));
+            assertEquals(type, params.get("type"));
+        }
+
+        @Test
+        @DisplayName("Should build query with only username when other criteria are null")
+        void returnsExpectedListWithOnlyUsername() {
+            String username = "john.doe";
+            String expectedJpql = "SELECT t FROM Training t WHERE t.trainee.user.username = :username";
+            when(entityManager.createQuery(eq(expectedJpql), eq(Training.class))).thenReturn(typedQuery);
+            when(typedQuery.setParameter("username", username)).thenReturn(typedQuery);
+            when(typedQuery.getResultList()).thenReturn(Collections.emptyList());
+
+            trainingDao.findForTraineeByCriteria(username, null, null, null, null);
+
+            verify(typedQuery).setParameter("username", username);
+        }
     }
 
-    // findAll() returns every stored training
-    @Test
-    void findAllReturnsAllStored() {
-        TrainingDaoImpl dao = newDao(1);
-        dao.create(newTraining(0));
-        dao.create(newTraining(0));
-        List<Training> all = dao.findAll();
-        assertEquals(2, all.size());
+    @Nested
+    class FindForTrainerByCriteria {
+
+        @Test
+        @DisplayName("Should build query with all criteria when all are provided")
+        void returnsExpectedListWithAllCriteria() {
+            String username = "coach.jane";
+            LocalDate fromDate = LocalDate.of(2025, 3, 1);
+            LocalDate toDate = LocalDate.of(2025, 3, 31);
+            String traineeName = "Bob";
+            List<Training> expected = Collections.singletonList(new Training());
+
+            String expectedJpql = "SELECT t FROM Training t WHERE t.trainer.user.username = :username" +
+                    " AND t.trainingDate >= :fromDate" +
+                    " AND t.trainingDate <= :toDate" +
+                    " AND t.trainee.user.firstName = :traineeName";
+
+            when(entityManager.createQuery(eq(expectedJpql), eq(Training.class))).thenReturn(typedQuery);
+            when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
+            when(typedQuery.getResultList()).thenReturn(expected);
+
+            List<Training> actual = trainingDao.findForTrainerByCriteria(username, fromDate, toDate, traineeName);
+            assertEquals(expected, actual);
+            verify(typedQuery).setParameter("username", username);
+            verify(typedQuery).setParameter("fromDate", fromDate);
+            verify(typedQuery).setParameter("toDate", toDate);
+            verify(typedQuery).setParameter("traineeName", traineeName);
+            }
+        }
     }
-}
+

@@ -1,57 +1,93 @@
 package com.epam.dao;
 
+import com.epam.domain.Trainee;
+import com.epam.domain.Trainer;
 import com.epam.domain.Training;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.epam.domain.TrainingType;
+import com.epam.domain.User;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.LocalDate;
+import java.util.*;
 
 @Repository
 public class TrainingDaoImpl implements TrainingDao {
-    private static final Logger log = LoggerFactory.getLogger(TrainingDaoImpl.class);
 
-    private final Map<Long, Training> trainingMap;
-
-    @Autowired
-    private AtomicLong trainingIdGenerator;
-
-    @Autowired
-    public TrainingDaoImpl(@Qualifier("trainingStorage") Map<Long, Training> trainingMap) {
-        this.trainingMap = trainingMap;
-    }
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
-    //method to create a new training
     public void create(Training training) {
-        if (training.getId() == 0) {
-            training.setId(trainingIdGenerator.getAndIncrement());
-        }
-        trainingMap.put(training.getId(), training);
-        log.debug("DAO stored training {}", training.getId());
-
+        entityManager.persist(training);
     }
+
     @Override
-    //method to find training by id
     public Optional<Training> findById(Long id) {
-        Optional<Training> result = Optional.ofNullable(trainingMap.get(id));
-        log.debug("DAO read training {} -> {}", id, result.isPresent() ? "found" : "null");
-        return result;
+        return Optional.ofNullable(entityManager.find(Training.class, id));
     }
 
     @Override
-    //method to find all
     public List<Training> findAll() {
-        List<Training> list = new ArrayList<>(trainingMap.values());
-        log.debug("DAO read all trainings – returned {} record(s)", list.size());
-        return list;
+        return entityManager.createQuery("FROM Training", Training.class).getResultList();
     }
 
+    @Override
+    public List<Training> findForTraineeByCriteria(String username, LocalDate fromDate, LocalDate toDate, String trainerName, TrainingType type) {
+        StringBuilder jpql = new StringBuilder("SELECT t FROM Training t WHERE t.trainee.user.username = :username");
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("username", username);
+
+        if (fromDate != null) {
+            jpql.append(" AND t.trainingDate >= :fromDate");
+            parameters.put("fromDate", fromDate);
+        }
+        if (toDate != null) {
+            jpql.append(" AND t.trainingDate <= :toDate");
+            parameters.put("toDate", toDate);
+        }
+        if (trainerName != null && !trainerName.isEmpty()) {
+            jpql.append(" AND t.trainer.user.firstName = :trainerName");
+            parameters.put("trainerName", trainerName);
+        }
+        if (type != null) {
+            jpql.append(" AND t.trainingType = :type");
+            parameters.put("type", type);
+        }
+
+        // 3. Create and execute the final query
+        TypedQuery<Training> query = entityManager.createQuery(jpql.toString(), Training.class);
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            query.setParameter(entry.getKey(), entry.getValue());
+        }
+        return query.getResultList();
+    }
+
+    @Override
+    public List<Training> findForTrainerByCriteria(String username, LocalDate fromDate, LocalDate toDate, String traineeName) {
+        StringBuilder jpql = new StringBuilder("SELECT t FROM Training t WHERE t.trainer.user.username = :username");
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("username", username);
+
+        if (fromDate != null) {
+            jpql.append(" AND t.trainingDate >= :fromDate");
+            parameters.put("fromDate", fromDate);
+        }
+        if (toDate != null) {
+            jpql.append(" AND t.trainingDate <= :toDate");
+            parameters.put("toDate", toDate);
+        }
+        if (traineeName != null && !traineeName.isEmpty()) {
+            jpql.append(" AND t.trainee.user.firstName = :traineeName");
+            parameters.put("traineeName", traineeName);
+        }
+        TypedQuery<Training> query = entityManager.createQuery(jpql.toString(), Training.class);
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            query.setParameter(entry.getKey(), entry.getValue());
+        }
+        return query.getResultList();
+    }
 }
