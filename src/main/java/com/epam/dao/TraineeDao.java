@@ -1,7 +1,9 @@
 package com.epam.dao;
 
 import com.epam.domain.Trainee;
+import com.epam.domain.Training;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,5 +16,4 @@ public interface TraineeDao {
     void delete(Long id);
     boolean usernameExists(String username);
     Optional<Trainee> findByUsername(String username);
-
 }

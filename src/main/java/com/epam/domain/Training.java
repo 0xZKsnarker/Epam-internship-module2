@@ -35,6 +35,15 @@ public class Training {
     // Default constructor for JPA
     public Training() {}
 
+    public Training(Trainee trainee, Trainer trainer, TrainingType trainingType, String trainingName, LocalDate trainingDate, int trainingDuration) {
+        this.trainee = trainee;
+        this.trainer = trainer;
+        this.trainingType = trainingType;
+        this.trainingName = trainingName;
+        this.trainingDate = trainingDate;
+        this.trainingDuration = trainingDuration;
+    }
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

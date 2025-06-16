@@ -1,11 +1,13 @@
 package com.epam.dao;
 
 import com.epam.domain.Trainee;
+import com.epam.domain.Training;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
