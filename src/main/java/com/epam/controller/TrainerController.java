@@ -11,6 +11,8 @@ import com.epam.dto.trainer.UpdateTrainerProfileRequest;
 import com.epam.dto.user.UpdateActivationStatusRequest;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.facade.GymFacade;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +30,10 @@ public class TrainerController {
         this.gymFacade = theGymFacade;
     }
 
+
+    @Operation(summary = "Register a new trainer")
     @PostMapping("/register")
+    @Valid
     public ResponseEntity<UserCredentialsResponse> registerTrainer(@RequestBody TrainerRegistrationRequest trainerRegistrationRequest){
         Trainer trainer = new Trainer();
         User user = new User();
@@ -50,6 +55,7 @@ public class TrainerController {
     }
 
 
+    @Operation(summary = "Get a trainer's profile by username")
     @GetMapping("/profile")
     public ResponseEntity<TrainerProfileResponse>getTrainer(@RequestParam String username){
         Trainer trainer = gymFacade.trainers().findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("Trainer with username: " + username + " not found"));
@@ -74,7 +80,9 @@ public class TrainerController {
     }
 
 
+    @Operation(summary = "Update an existing trainer's profile")
     @PutMapping("/profile")
+    @Valid
     public ResponseEntity<TrainerProfileResponse> updateTrainerProfile(@RequestBody UpdateTrainerProfileRequest updateTrainerProfileRequest) {
 
         Trainer trainerToUpdate = gymFacade.trainers().findByUsername(updateTrainerProfileRequest.getUsername())
@@ -107,7 +115,9 @@ public class TrainerController {
     }
 
 
+    @Operation(summary = "Activate or deactivate a trainer")
     @PatchMapping("/activation")
+    @Valid
     public ResponseEntity<Void> activateDeactivateTrainee(@RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
         gymFacade.trainers().activateTrainer(updateActivationStatusRequest.getUsername(), updateActivationStatusRequest.isActive());
         return ResponseEntity.ok().build();

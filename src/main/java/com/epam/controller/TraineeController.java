@@ -7,6 +7,8 @@ import com.epam.dto.trainee.*;
 import com.epam.dto.user.UpdateActivationStatusRequest;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.facade.GymFacade;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +24,9 @@ public class TraineeController {
         this.gymFacade = theGymFacade;
     }
 
+    @Operation(summary = "Register a new trainee")
     @PostMapping("/register")
+    @Valid
     public ResponseEntity<UserCredentialsResponse>registerTrainee(@RequestBody TraineeRegistrationRequest traineeRegistrationRequest){
         Trainee trainee = new Trainee();
         User user = new User();
@@ -43,6 +47,7 @@ public class TraineeController {
     }
 
 
+    @Operation(summary = "Get a trainee's profile by username")
     @GetMapping("/profile")
     public ResponseEntity<TraineeProfileResponse>getTrainee(@RequestParam String username){
         Trainee trainee = gymFacade.trainees().findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("Trainee with username: " + username + " not found"));
@@ -70,8 +75,9 @@ public class TraineeController {
         return ResponseEntity.ok(traineeProfileResponse);
     }
 
-
+    @Operation(summary = "Update an existing trainee's profile")
     @PutMapping("/profile")
+    @Valid
     public ResponseEntity<TraineeProfileResponse> updateTraineeProfile(@RequestBody UpdateTraineeProfileRequest updateTraineeProfileRequest) {
 
         Trainee traineeToUpdate = gymFacade.trainees().findByUsername(updateTraineeProfileRequest.getUsername())
@@ -108,6 +114,7 @@ public class TraineeController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Delete a trainee's profile")
     @DeleteMapping("/{username}")
     public ResponseEntity<Void> deleteTraineeProfile(@PathVariable String username) {
         gymFacade.trainees().deleteByUsername(username);
@@ -115,8 +122,17 @@ public class TraineeController {
     }
 
     @PatchMapping("/activation")
+    @Valid
     public ResponseEntity<Void> activateDeactivateTrainee(@RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
         gymFacade.trainees().activateTrainee(updateActivationStatusRequest.getUsername(), updateActivationStatusRequest.isActive());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Activate or deactivate a trainee")
+    @PutMapping("/trainee")
+    @Valid
+    public ResponseEntity<Void> updateTraineeTrainers(@RequestBody UpdateTraineeTrainersRequest updateTraineeTrainersRequest){
+        gymFacade.trainees().updateTrainers(updateTraineeTrainersRequest.getTraineeUsername(), updateTraineeTrainersRequest.getTrainers());
         return ResponseEntity.ok().build();
     }
 

@@ -1,8 +1,10 @@
 package com.epam.service;
 
+import com.epam.dao.TraineeDao;
 import com.epam.dao.TrainerDao;
 import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
+import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
 import org.slf4j.Logger;
@@ -20,24 +22,44 @@ public class TrainerServiceImpl implements TrainerService {
 
     private static final Logger log = LoggerFactory.getLogger(TrainerServiceImpl.class);
     private TrainerDao trainerDao;
+    private TraineeDao traineeDao;
 
     @Autowired
     public void setTrainerDao(TrainerDao trainerDao) {
         this.trainerDao = trainerDao;
     }
+    @Autowired
+    public void setTrainerDao(TraineeDao traineeDao) {
+        this.traineeDao = traineeDao;
+    }
 
     @Override
     public Trainer create(Trainer trainer) {
-        String newUsername = AuthUtils.generateUsername(trainer.getUser().getFirstName(), trainer.getUser().getLastName(), trainerDao::usernameExists);
-        trainer.getUser().setUsername(newUsername);
-        trainer.getUser().setPassword(AuthUtils.randomPassword(10));
-        trainer.getUser().setActive(true);
+        log.info("Creating trainer");
+        User user = trainer.getUser();
+
+        boolean traineeExists = traineeDao.findAll().stream()
+                .anyMatch(existingTrainee -> existingTrainee.getUser().getFirstName().equalsIgnoreCase(user.getFirstName()) &&
+                        existingTrainee.getUser().getLastName().equalsIgnoreCase(user.getLastName()));
+
+        if (traineeExists) {
+            log.error("A user with this name already exists as a Trainee.");
+            throw new IllegalStateException("A user with name " + user.getFirstName() + " " + user.getLastName() + " already exists as a Trainee.");
+        }
+
+        String password = AuthUtils.randomPassword(10);
+        user.setPassword(password);
+        user.setActive(true);
+        user.setUsername(AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists));
+        trainer.setUser(user);
 
         trainerDao.create(trainer);
-        log.info("Created trainer {}", newUsername);
+
+        log.info("Created trainer with username {}", user.getUsername());
+
+        trainer.getUser().setPassword(password);
         return trainer;
     }
-
     @Override
     public Trainer update(Trainer trainer) {
         Optional<Trainer> existingTrainer = trainerDao.findById(trainer.getId());
@@ -105,5 +127,9 @@ public class TrainerServiceImpl implements TrainerService {
         List<Trainer> trainers = trainerDao.findUnassignedTrainers(traineeUsername);
         log.info("Found {} unassigned trainers for trainee '{}'.", trainers.size(), traineeUsername);
         return trainers;
+    }
+
+    private boolean UsernameExists(String username) {
+        return trainerDao.findByUsername(username).isPresent();
     }
 }

@@ -6,12 +6,16 @@ import com.epam.domain.Trainer;
 import com.epam.domain.Training;
 import com.epam.domain.TrainingType;
 import com.epam.dto.trainee.TrainerInfo;
+import com.epam.dto.trainee.UpdateTraineeProfileRequest;
+import com.epam.dto.trainee.UpdateTraineeTrainersRequest;
 import com.epam.dto.training.AddTrainingRequest;
 import com.epam.dto.training.TraineeTrainingResponse;
 import com.epam.dto.training.TrainerTrainingResponse;
 import com.epam.dto.training.TrainingTypeResponse;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.facade.GymFacade;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,8 +36,10 @@ public class TrainingController {
         this.gymFacade = gymFacade;
     }
 
-    @PostMapping("create")
-    public ResponseEntity<Void>createNewTraining (@RequestParam AddTrainingRequest addTrainingRequest){
+    @Operation(summary = "Add a new training session")
+    @PostMapping("/create")
+    @Valid
+    public ResponseEntity<Void>createNewTraining (@RequestBody AddTrainingRequest addTrainingRequest){
         Trainee trainee = gymFacade.trainees().findByUsername(addTrainingRequest.getTraineeUsername()).orElseThrow(() -> new ResourceNotFoundException("\"Trainee not found for username: " + addTrainingRequest.getTraineeUsername()));
 
         Trainer trainer = gymFacade.trainers().findByUsername(addTrainingRequest.getTrainerUsername())
@@ -47,7 +53,8 @@ public class TrainingController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-@GetMapping("/types")
+    @Operation(summary = "Get all available training types")
+    @GetMapping("/types")
     public ResponseEntity<List<TrainingTypeResponse>> getTrainingTypes() {
         List<TrainingTypeResponse> trainingTypeResponses = gymFacade.trainingTypes().findAll()
                 .stream()
@@ -56,6 +63,7 @@ public class TrainingController {
         return ResponseEntity.ok(trainingTypeResponses);
     }
 
+    @Operation(summary = "Get a trainee's trainings list with filtering")
     @GetMapping("/trainee/{username}")
     public ResponseEntity<List<TraineeTrainingResponse>> getTraineeTrainings(
             @PathVariable String username,
@@ -79,7 +87,7 @@ public class TrainingController {
         return ResponseEntity.ok(response);
     }
 
-
+    @Operation(summary = "Get a trainer's trainings list with filtering")
     @GetMapping("/trainer/{username}")
     public ResponseEntity<List<TrainerTrainingResponse>> getTrainerTrainings(
             @PathVariable String username,
@@ -102,6 +110,7 @@ public class TrainingController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Get trainers not assigned to a specific trainee")
     @GetMapping("/not-assigned")
     public ResponseEntity<List<TrainerInfo>> getNotAssignedTrainers(@RequestParam String username) {
         List<Trainer> trainers = gymFacade.trainers().getUnassignedTrainers(username);

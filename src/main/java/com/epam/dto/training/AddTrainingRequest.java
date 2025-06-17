@@ -1,13 +1,21 @@
 package com.epam.dto.training;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+
 import java.time.LocalDate;
 
 public class AddTrainingRequest {
 
+    @NotBlank
     private String traineeUsername;
+    @NotBlank
     private String trainerUsername;
+    @NotBlank
     private String trainingName;
+    @NotBlank
     private int durationOfTraining;
+    @NotBlank
     private LocalDate trainingDate;
 
 

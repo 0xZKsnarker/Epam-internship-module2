@@ -19,12 +19,13 @@ class GymFacadeTest {
     TrainerService trainerService;
     @Mock
     TrainingService trainingService;
+    private TrainingTypeService trainingTypeService;
 
     private GymFacade facade;
 
     @BeforeEach
     void setUp() {
-        facade = new GymFacade(traineeService, trainerService, trainingService);
+        facade = new GymFacade(traineeService, trainerService, trainingService, trainingTypeService);
     }
 
     @Test

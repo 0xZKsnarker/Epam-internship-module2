@@ -1,9 +1,14 @@
 package com.epam.dto.user;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class UpdateActivationStatusRequest {
 
+    @NotBlank
     private String username;
+    @NotBlank
     private boolean isActive;
+    public UpdateActivationStatusRequest(){}
 
     public boolean isActive() {
         return isActive;

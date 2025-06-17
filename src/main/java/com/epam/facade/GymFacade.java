@@ -14,12 +14,13 @@ public class GymFacade {
     private final TrainingService trainingService;
     private final TrainingTypeService trainingTypeService;
 
-    public GymFacade(TraineeService traineeService, TrainerService trainerService, TrainingService trainingService, TrainingTypeService trainingTypeService, TrainingTypeService trainingTypeService1) {
+    public GymFacade(TraineeService traineeService, TrainerService trainerService, TrainingService trainingService, TrainingTypeService trainingTypeService) {
         this.traineeService  = traineeService;
         this.trainerService  = trainerService;
         this.trainingService = trainingService;
-        this.trainingTypeService = trainingTypeService1;
+        this.trainingTypeService = trainingTypeService;
     }
+
 
     public TraineeService trainees()  {
         return traineeService;

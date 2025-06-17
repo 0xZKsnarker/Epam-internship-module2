@@ -2,6 +2,8 @@ package com.epam.controller;
 
 import com.epam.dto.auth.ChangePasswordRequest;
 import com.epam.facade.GymFacade;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,8 @@ public class AuthController {
         this.gymFacade = gymFacade;
     }
 
+    @Operation(summary = "Login for Trainee or Trainer")
+    @Valid
     @GetMapping("/login")
     public ResponseEntity<Void> login (@RequestParam String username, @RequestParam String password){
         boolean trainerlogin = gymFacade.trainers().checkCredentials(username, password);
@@ -29,6 +33,9 @@ public class AuthController {
         }
     }
 
+
+    @Operation(summary = "Change password for Trainee or Trainer")
+    @Valid
     @PutMapping("/change-pass")
     public ResponseEntity<Void>changePassword(@RequestBody ChangePasswordRequest changePasswordRequest){
         boolean traineeLoginIsValid = gymFacade.trainees().checkCredentials(changePasswordRequest.getUsername(), changePasswordRequest.getOldPass());

@@ -1,9 +1,14 @@
 package com.epam.dto.trainer;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class TrainerRegistrationRequest {
 
+    @NotBlank
     private String firstName;
+    @NotBlank
     private String lastName;
+    @NotBlank
     private Long specializationId;
 
     public String getFirstName() {

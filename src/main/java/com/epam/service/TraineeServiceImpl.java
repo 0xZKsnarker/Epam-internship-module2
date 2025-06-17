@@ -4,6 +4,7 @@ import com.epam.dao.TraineeDao;
 import com.epam.dao.TrainerDao;
 import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
+import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
 import org.slf4j.Logger;
@@ -38,17 +39,29 @@ public class TraineeServiceImpl implements TraineeService {
 
     @Override
     public Trainee create(Trainee trainee) {
-        String newUsername = AuthUtils.generateUsername(
-                trainee.getUser().getFirstName(),
-                trainee.getUser().getLastName(),
-                traineeDao::usernameExists
-        );
-        trainee.getUser().setUsername(newUsername);
-        trainee.getUser().setPassword(AuthUtils.randomPassword(10));
-        trainee.getUser().setActive(true);
+        log.info("Creating trainee");
+        User user = trainee.getUser();
+
+        boolean trainerExists = trainerDao.findAll().stream()
+                .anyMatch(existingTrainer -> existingTrainer.getUser().getFirstName().equalsIgnoreCase(user.getFirstName()) &&
+                        existingTrainer.getUser().getLastName().equalsIgnoreCase(user.getLastName()));
+
+        if (trainerExists) {
+            log.error("A user with this name already exists as a Trainer.");
+            throw new IllegalStateException("A user with name " + user.getFirstName() + " " + user.getLastName() + " already exists as a Trainer.");
+        }
+
+        String password = AuthUtils.randomPassword(10);
+        user.setPassword(password);
+        user.setActive(true);
+        user.setUsername(AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists));
+        trainee.setUser(user);
 
         traineeDao.create(trainee);
-        log.info("Created trainee {}", newUsername);
+
+        log.info("Created trainee with username {}", user.getUsername());
+
+        trainee.getUser().setPassword(password);
         return trainee;
     }
 
@@ -139,5 +152,8 @@ public class TraineeServiceImpl implements TraineeService {
         return trainee;
     }
 
-
+    //helper method to check if a username exists
+    private boolean UsernameExists(String username) {
+        return traineeDao.findByUsername(username).isPresent();
+    }
 }
