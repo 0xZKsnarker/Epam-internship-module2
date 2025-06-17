@@ -85,11 +85,6 @@ public class TrainerController {
         userToUpdate.setLastName(updateTrainerProfileRequest.getLastName());
         userToUpdate.setActive(updateTrainerProfileRequest.isActive());
         trainerToUpdate.setUser(userToUpdate);
-
-        TrainingType newTrainingType = gymFacade.trainingTypes().findById(updateTrainerProfileRequest.getSpecializationId())
-                .orElseThrow(() -> new ResourceNotFoundException("Specialization not found for this ID"));
-        trainerToUpdate.setSpecialization(newTrainingType);
-
         Trainer updatedTrainer = gymFacade.trainers().update(trainerToUpdate);
 
         TrainerProfileResponse trainerProfileResponse = new TrainerProfileResponse();
@@ -112,7 +107,7 @@ public class TrainerController {
     }
 
 
-    @PutMapping("/activation")
+    @PatchMapping("/activation")
     public ResponseEntity<Void> activateDeactivateTrainee(@RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
         gymFacade.trainers().activateTrainer(updateActivationStatusRequest.getUsername(), updateActivationStatusRequest.isActive());
         return ResponseEntity.ok().build();

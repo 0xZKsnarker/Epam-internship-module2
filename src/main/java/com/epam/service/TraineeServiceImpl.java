@@ -138,4 +138,6 @@ public class TraineeServiceImpl implements TraineeService {
         log.info("Updated trainer list for trainee {}", traineeUsername);
         return trainee;
     }
+
+
 }

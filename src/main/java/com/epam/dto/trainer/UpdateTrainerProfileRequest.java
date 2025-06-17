@@ -5,7 +5,6 @@ public class UpdateTrainerProfileRequest {
     private String username;
     private String firstName;
     private String lastName;
-    private long specializationId;
     private boolean isActive;
 
     public String getUsername() {
@@ -30,14 +29,6 @@ public class UpdateTrainerProfileRequest {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
-    }
-
-    public long getSpecializationId() {
-        return specializationId;
-    }
-
-    public void setSpecializationId(long specializationId) {
-        this.specializationId = specializationId;
     }
 
     public boolean isActive() {

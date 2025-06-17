@@ -13,5 +13,4 @@ public interface TrainingTypeDao {
     void create(TrainingType trainingType);
     Optional<TrainingType> findById(Long id);
     List<TrainingType> findAll();
-
 }

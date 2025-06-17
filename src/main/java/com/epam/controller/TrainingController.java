@@ -5,14 +5,19 @@ import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
 import com.epam.domain.Training;
 import com.epam.domain.TrainingType;
+import com.epam.dto.trainee.TrainerInfo;
 import com.epam.dto.training.AddTrainingRequest;
+import com.epam.dto.training.TraineeTrainingResponse;
+import com.epam.dto.training.TrainerTrainingResponse;
 import com.epam.dto.training.TrainingTypeResponse;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.facade.GymFacade;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,4 +55,67 @@ public class TrainingController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(trainingTypeResponses);
     }
+
+    @GetMapping("/trainee/{username}")
+    public ResponseEntity<List<TraineeTrainingResponse>> getTraineeTrainings(
+            @PathVariable String username,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) String trainerName,
+            @RequestParam(required = false) String trainingType
+    ) {
+        List<Training> trainings = gymFacade.trainings().getTraineeTrainingsByCriteria(username, fromDate, toDate, trainerName, trainingType);
+
+        List<TraineeTrainingResponse> response = trainings.stream()
+                .map(training -> new TraineeTrainingResponse(
+                        training.getTrainingName(),
+                        training.getTrainingDate(),
+                        training.getTrainingType().getName(),
+                        training.getTrainingDuration(),
+                        training.getTrainer().getUser().getFirstName() + " " + training.getTrainer().getUser().getLastName()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/trainer/{username}")
+    public ResponseEntity<List<TrainerTrainingResponse>> getTrainerTrainings(
+            @PathVariable String username,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) String traineeName
+    ) {
+        List<Training> trainings = gymFacade.trainings().getTrainerTrainingsByCriteria(username, fromDate, toDate, traineeName);
+
+        List<TrainerTrainingResponse> response = trainings.stream()
+                .map(training -> new TrainerTrainingResponse(
+                        training.getTrainingName(),
+                        training.getTrainingDate(),
+                        training.getTrainingType().getName(),
+                        training.getTrainingDuration(),
+                        training.getTrainee().getUser().getFirstName() + " " + training.getTrainee().getUser().getLastName()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/not-assigned")
+    public ResponseEntity<List<TrainerInfo>> getNotAssignedTrainers(@RequestParam String username) {
+        List<Trainer> trainers = gymFacade.trainers().getUnassignedTrainers(username);
+
+        List<TrainerInfo> response = trainers.stream()
+                .map(trainer -> new TrainerInfo(
+                        trainer.getUser().getUsername(),
+                        trainer.getUser().getFirstName(),
+                        trainer.getUser().getLastName(),
+                        trainer.getSpecialization().getName()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
 }

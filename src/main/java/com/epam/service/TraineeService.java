@@ -18,4 +18,5 @@ public interface TraineeService {
     void changePassword(String username, String newPassword);
     void activateTrainee(String username, boolean isActive);
     Trainee updateTrainers(String traineeUsername, List<String> trainerUsernames);
+
 }

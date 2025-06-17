@@ -3,17 +3,13 @@ package com.epam.controller;
 import com.epam.domain.Trainee;
 import com.epam.domain.User;
 import com.epam.dto.auth.UserCredentialsResponse;
-import com.epam.dto.trainee.TraineeProfileResponse;
-import com.epam.dto.trainee.TraineeRegistrationRequest;
-import com.epam.dto.trainee.TrainerInfo;
-import com.epam.dto.trainee.UpdateTraineeProfileRequest;
+import com.epam.dto.trainee.*;
 import com.epam.dto.user.UpdateActivationStatusRequest;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.facade.GymFacade;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.stream.Collectors;
 
 @RequestMapping("api/trainees")
@@ -112,9 +108,16 @@ public class TraineeController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/activation")
+    @DeleteMapping("/{username}")
+    public ResponseEntity<Void> deleteTraineeProfile(@PathVariable String username) {
+        gymFacade.trainees().deleteByUsername(username);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/activation")
     public ResponseEntity<Void> activateDeactivateTrainee(@RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
         gymFacade.trainees().activateTrainee(updateActivationStatusRequest.getUsername(), updateActivationStatusRequest.isActive());
         return ResponseEntity.ok().build();
     }
+
 }

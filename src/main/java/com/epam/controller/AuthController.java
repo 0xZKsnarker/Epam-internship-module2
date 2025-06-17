@@ -30,7 +30,7 @@ public class AuthController {
     }
 
     @PutMapping("/change-pass")
-    public ResponseEntity<Void>changePassword(@RequestParam ChangePasswordRequest changePasswordRequest){
+    public ResponseEntity<Void>changePassword(@RequestBody ChangePasswordRequest changePasswordRequest){
         boolean traineeLoginIsValid = gymFacade.trainees().checkCredentials(changePasswordRequest.getUsername(), changePasswordRequest.getOldPass());
         boolean trainerLoginIsValid = gymFacade.trainers().checkCredentials(changePasswordRequest.getUsername(), changePasswordRequest.getOldPass());
 

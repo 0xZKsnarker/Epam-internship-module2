@@ -7,6 +7,15 @@ public class TrainerInfo {
     private String lastName;
     private String specialization;
 
+    public TrainerInfo(String username, String firstName, String lastName, String specialization) {
+        this.username = username;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.specialization = specialization;
+    }
+
+    public TrainerInfo(){}
+
     public String getUsername() {
         return username;
     }
