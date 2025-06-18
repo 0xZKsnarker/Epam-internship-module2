@@ -1,6 +1,8 @@
 package com.epam.service;
 
+import com.epam.dao.TraineeDao;
 import com.epam.dao.TrainerDao;
+import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
@@ -21,7 +23,7 @@ class TrainerServiceImplTest {
     @Mock   private TrainerDao trainerDao;
     @InjectMocks
     private TrainerServiceImpl service;
-
+    @Mock   private TraineeDao traineeDao;
 
     private static User user(String first, String last,
                              String uname, String pwd, boolean active) {
@@ -42,13 +44,14 @@ class TrainerServiceImplTest {
         return tr;
     }
 
-
     @Test
     @DisplayName("create() generates credentials and persists the trainer")
     void create_generatesCredentials() {
-        when(trainerDao.usernameExists("John.Smith")).thenReturn(false);
+        when(traineeDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainee check
+        when(trainerDao.findByUsername("John.Smith")).thenReturn(Optional.empty()); // Mock for username generation
 
         Trainer toSave = trainer(0, "John", "Smith", null, null);
+
         Trainer result  = service.create(toSave);
 
         assertEquals("John.Smith", result.getUser().getUsername());
@@ -60,16 +63,38 @@ class TrainerServiceImplTest {
     @Test
     @DisplayName("create() resolves username collision by suffixing")
     void create_usernameCollision() {
-        when(trainerDao.usernameExists("John.Smith")).thenReturn(true);
-        when(trainerDao.usernameExists("John.Smith.1")).thenReturn(false);
+        when(traineeDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainee check
+        when(trainerDao.findByUsername("John.Smith")).thenReturn(Optional.of(new Trainer())); // Mock collision
+        when(trainerDao.findByUsername("John.Smith.1")).thenReturn(Optional.empty()); // Mock available username
 
         Trainer toSave = trainer(0, "John", "Smith", null, null);
+
         service.create(toSave);
 
         assertEquals("John.Smith.1", toSave.getUser().getUsername());
         verify(trainerDao).create(toSave);
     }
 
+    @Test
+    @DisplayName("create() throws IllegalStateException when a trainee with the same name exists")
+    void create_throwsWhenTraineeWithSameNameExists() {
+        User existingUser = new User();
+        existingUser.setFirstName("John");
+        existingUser.setLastName("Smith");
+        Trainee existingTrainee = new Trainee();
+        existingTrainee.setUser(existingUser);
+
+        when(traineeDao.findAll()).thenReturn(List.of(existingTrainee));
+
+        Trainer trainerToCreate = trainer(0, "John", "Smith", null, null);
+
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> {
+            service.create(trainerToCreate);
+        }, "A user with name John Smith already exists as a Trainee.");
+
+        verify(trainerDao, never()).create(any(Trainer.class));
+    }
 
     @Nested
     class Update {

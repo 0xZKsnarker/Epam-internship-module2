@@ -2,8 +2,12 @@ package com.epam.controller;
 
 import com.epam.dto.auth.ChangePasswordRequest;
 import com.epam.facade.GymFacade;
+import com.epam.service.TraineeService;
+import com.epam.service.TrainerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -16,38 +20,45 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuthController.class) // Specify that we are testing the AuthController
+@WebMvcTest(AuthController.class)
 class AuthControllerTest {
 
     @Autowired
-    private MockMvc mockMvc; // For performing fake HTTP requests
+    private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper; // For converting objects to JSON
+    private ObjectMapper objectMapper;
 
     @MockBean
-    private GymFacade gymFacade; // Provide a mock of the GymFacade
+    private GymFacade gymFacade;
+
+    private TraineeService traineeService;
+    private TrainerService trainerService;
+
+    @BeforeEach
+    void setUp() {
+        traineeService = Mockito.mock(TraineeService.class);
+        trainerService = Mockito.mock(TrainerService.class);
+        when(gymFacade.trainees()).thenReturn(traineeService);
+        when(gymFacade.trainers()).thenReturn(trainerService);
+    }
 
     @Test
     void testLogin_whenTraineeCredentialsAreValid_shouldReturnOk() throws Exception {
-        // Arrange: Set up mock behavior
-        when(gymFacade.trainees().checkCredentials("user", "password")).thenReturn(true);
-        when(gymFacade.trainers().checkCredentials("user", "password")).thenReturn(false);
+        when(traineeService.checkCredentials("user", "password")).thenReturn(true);
+        when(trainerService.checkCredentials("user", "password")).thenReturn(false);
 
-        // Act & Assert: Perform the request and check the status
         mockMvc.perform(get("/api/auth/login")
                         .param("username", "user")
                         .param("password", "password"))
-                .andExpect(status().isOk()); // Expect HTTP 200 OK
+                .andExpect(status().isOk());
     }
 
     @Test
     void testLogin_whenTrainerCredentialsAreValid_shouldReturnOk() throws Exception {
-        // Arrange
-        when(gymFacade.trainees().checkCredentials("user", "password")).thenReturn(false);
-        when(gymFacade.trainers().checkCredentials("user", "password")).thenReturn(true);
+        when(traineeService.checkCredentials("user", "password")).thenReturn(false);
+        when(trainerService.checkCredentials("user", "password")).thenReturn(true);
 
-        // Act & Assert
         mockMvc.perform(get("/api/auth/login")
                         .param("username", "user")
                         .param("password", "password"))
@@ -56,58 +67,63 @@ class AuthControllerTest {
 
     @Test
     void testLogin_whenCredentialsAreInvalid_shouldReturnUnauthorized() throws Exception {
-        // Arrange
-        when(gymFacade.trainees().checkCredentials("user", "wrong_password")).thenReturn(false);
-        when(gymFacade.trainers().checkCredentials("user", "wrong_password")).thenReturn(false);
+        when(traineeService.checkCredentials("user", "wrong_password")).thenReturn(false);
+        when(trainerService.checkCredentials("user", "wrong_password")).thenReturn(false);
 
-        // Act & Assert
         mockMvc.perform(get("/api/auth/login")
                         .param("username", "user")
                         .param("password", "wrong_password"))
-                .andExpect(status().isUnauthorized()); // Expect HTTP 401 Unauthorized
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void testChangePassword_whenTraineeIsValid_shouldReturnOk() throws Exception {
-        // Arrange
-        ChangePasswordRequest request = new ChangePasswordRequest("user", "old_pass", "new_pass");
-        when(gymFacade.trainees().checkCredentials("user", "old_pass")).thenReturn(true);
 
-        // Act & Assert
+        ChangePasswordRequest request = new ChangePasswordRequest(null, null, null); // Call empty constructor
+        request.setUsername("user");
+        request.setOldPass("old_pass");
+        request.setNewPass("new_pass");
+
+        when(traineeService.checkCredentials("user", "old_pass")).thenReturn(true);
+
         mockMvc.perform(put("/api/auth/change-pass")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        // Verify that the changePassword method was called on the trainee service
-        verify(gymFacade.trainees()).changePassword("user", "new_pass");
+        verify(traineeService).changePassword("user", "new_pass");
     }
 
     @Test
     void testChangePassword_whenTrainerIsValid_shouldReturnOk() throws Exception {
-        // Arrange
-        ChangePasswordRequest request = new ChangePasswordRequest("user", "old_pass", "new_pass");
-        when(gymFacade.trainees().checkCredentials("user", "old_pass")).thenReturn(false);
-        when(gymFacade.trainers().checkCredentials("user", "old_pass")).thenReturn(true);
 
-        // Act & Assert
+        ChangePasswordRequest request = new ChangePasswordRequest(null, null, null); // Call empty constructor
+        request.setUsername("user");
+        request.setOldPass("old_pass");
+        request.setNewPass("new_pass");
+
+        when(traineeService.checkCredentials("user", "old_pass")).thenReturn(false);
+        when(trainerService.checkCredentials("user", "old_pass")).thenReturn(true);
+
         mockMvc.perform(put("/api/auth/change-pass")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        // Verify that the changePassword method was called on the trainer service
-        verify(gymFacade.trainers()).changePassword("user", "new_pass");
+        verify(trainerService).changePassword("user", "new_pass");
     }
 
     @Test
     void testChangePassword_whenCredentialsAreInvalid_shouldReturnUnauthorized() throws Exception {
-        // Arrange
-        ChangePasswordRequest request = new ChangePasswordRequest("user", "wrong_old_pass", "new_pass");
-        when(gymFacade.trainees().checkCredentials("user", "wrong_old_pass")).thenReturn(false);
-        when(gymFacade.trainers().checkCredentials("user", "wrong_old_pass")).thenReturn(false);
 
-        // Act & Assert
+        ChangePasswordRequest request = new ChangePasswordRequest(null, null, null); // Call empty constructor
+        request.setUsername("user");
+        request.setOldPass("wrong_old_pass");
+        request.setNewPass("new_pass");
+
+        when(traineeService.checkCredentials("user", "wrong_old_pass")).thenReturn(false);
+        when(trainerService.checkCredentials("user", "wrong_old_pass")).thenReturn(false);
+
         mockMvc.perform(put("/api/auth/change-pass")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

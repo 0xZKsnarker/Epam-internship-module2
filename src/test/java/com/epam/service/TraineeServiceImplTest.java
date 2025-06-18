@@ -52,11 +52,11 @@ class TraineeServiceImplTest {
         return tr;
     }
 
-
     @Test
     @DisplayName("create() generates unique username & password then persists")
     void create_generatesCredentialsAndPersists() {
-        when(traineeDao.usernameExists("John.Smith")).thenReturn(false);
+        when(trainerDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainer check
+        when(traineeDao.findByUsername("John.Smith")).thenReturn(Optional.empty()); // Mock for username generation
 
         Trainee toSave = trainee(0, "John", "Smith", null, null);
 
@@ -71,16 +71,37 @@ class TraineeServiceImplTest {
     @Test
     @DisplayName("create() resolves username collision by suffixing")
     void create_resolvesUsernameCollision() {
-        when(traineeDao.usernameExists("John.Smith")).thenReturn(true);
-        when(traineeDao.usernameExists("John.Smith.1")).thenReturn(false);
+        when(trainerDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainer check
+        when(traineeDao.findByUsername("John.Smith")).thenReturn(Optional.of(new Trainee())); // Mock collision
+        when(traineeDao.findByUsername("John.Smith.1")).thenReturn(Optional.empty()); // Mock available username
 
         Trainee toSave = trainee(0, "John", "Smith", null, null);
+
         service.create(toSave);
 
         assertEquals("John.Smith.1", toSave.getUser().getUsername());
         verify(traineeDao).create(toSave);
     }
 
+    @Test
+    @DisplayName("create() throws IllegalStateException when a trainer with the same name exists")
+    void create_throwsWhenTrainerWithSameNameExists() {
+        User existingUser = new User();
+        existingUser.setFirstName("John");
+        existingUser.setLastName("Smith");
+        Trainer existingTrainer = new Trainer();
+        existingTrainer.setUser(existingUser);
+
+        when(trainerDao.findAll()).thenReturn(List.of(existingTrainer));
+
+        Trainee traineeToCreate = trainee(0, "John", "Smith", null, null);
+
+        assertThrows(IllegalStateException.class, () -> {
+            service.create(traineeToCreate);
+        }, "A user with name John Smith already exists as a Trainer.");
+
+        verify(traineeDao, never()).create(any(Trainee.class));
+    }
 
     @Nested
     class Update {
