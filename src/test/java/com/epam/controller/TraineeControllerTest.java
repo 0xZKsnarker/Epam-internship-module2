@@ -23,23 +23,22 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TraineeController.class)
-public class TraineeControllerTest {
+class TraineeControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private GymFacade gymFacade;
-
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private GymFacade gymFacade;
 
     private TraineeService traineeService;
 
@@ -51,24 +50,24 @@ public class TraineeControllerTest {
 
     @Test
     void registerTrainee_shouldReturnCreated() throws Exception {
-        TraineeRegistrationRequest request = new TraineeRegistrationRequest();
-        request.setFirstName("John");
-        request.setLastName("Doe");
-        request.setDateOfBirth(LocalDate.of(2000, 1, 1));
-        request.setAddress("123 Main St");
+        TraineeRegistrationRequest body = new TraineeRegistrationRequest();
+        body.setFirstName("John");
+        body.setLastName("Doe");
+        body.setDateOfBirth(LocalDate.of(2000, 1, 1));
+        body.setAddress("123 Main St");
 
         User user = new User();
         user.setUsername("John.Doe");
-        user.setPassword("password");
+        user.setPassword("pwd");
 
         Trainee trainee = new Trainee();
         trainee.setUser(user);
 
         when(traineeService.create(any(Trainee.class))).thenReturn(trainee);
 
-        mockMvc.perform(post("/api/trainees/register")
+        mockMvc.perform(post("/api/trainees")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated());
     }
 
@@ -86,41 +85,37 @@ public class TraineeControllerTest {
 
         when(traineeService.findByUsername("John.Doe")).thenReturn(Optional.of(trainee));
 
-        mockMvc.perform(get("/api/trainees/profile")
-                        .param("username", "John.Doe"))
+        mockMvc.perform(get("/api/trainees/{username}", "John.Doe"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void updateTraineeProfile_shouldReturnOk() throws Exception {
-        UpdateTraineeProfileRequest request = new UpdateTraineeProfileRequest();
-        request.setUsername("John.Doe");
-        request.setFirstName("John");
-        request.setLastName("Doe");
-        request.setDateOfBirth(LocalDate.of(2000, 1, 1));
-        request.setAddress("456 Market St");
-        request.setActive(true);
+        UpdateTraineeProfileRequest body = new UpdateTraineeProfileRequest();
+        body.setUsername("John.Doe");
+        body.setFirstName("John");
+        body.setLastName("Doe");
+        body.setDateOfBirth(LocalDate.of(2000, 1, 1));
+        body.setAddress("456 Market St");
+        body.setActive(true);
 
-        Trainee existingTrainee = new Trainee();
-        existingTrainee.setUser(new User());
+        Trainee existing = new Trainee();
+        existing.setUser(new User());
 
-        User updatedUser = new User();
-        updatedUser.setFirstName(request.getFirstName());
-        updatedUser.setLastName(request.getLastName());
-        updatedUser.setActive(request.isActive());
+        Trainee updated = new Trainee();
+        updated.setUser(new User());
+        updated.getUser().setFirstName(body.getFirstName());
+        updated.getUser().setLastName(body.getLastName());
+        updated.getUser().setActive(body.isActive());
+        updated.setAddress(body.getAddress());
+        updated.setDateOfBirth(body.getDateOfBirth());
 
-        Trainee updatedTrainee = new Trainee();
-        updatedTrainee.setUser(updatedUser);
-        updatedTrainee.setAddress(request.getAddress());
-        updatedTrainee.setDateOfBirth(request.getDateOfBirth());
+        when(traineeService.findByUsername("John.Doe")).thenReturn(Optional.of(existing));
+        when(traineeService.update(any(Trainee.class))).thenReturn(updated);
 
-
-        when(traineeService.findByUsername("John.Doe")).thenReturn(Optional.of(existingTrainee));
-        when(traineeService.update(any(Trainee.class))).thenReturn(updatedTrainee);
-
-        mockMvc.perform(put("/api/trainees/profile")
+        mockMvc.perform(put("/api/trainees/{username}", "John.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
     }
 
@@ -131,30 +126,31 @@ public class TraineeControllerTest {
         mockMvc.perform(delete("/api/trainees/{username}", "John.Doe"))
                 .andExpect(status().isOk());
     }
+
     @Test
     void activateDeactivateTrainee_shouldReturnOk() throws Exception {
-        UpdateActivationStatusRequest request = new UpdateActivationStatusRequest();
-        request.setUsername("John.Doe");
-        request.setActive(true);
+        UpdateActivationStatusRequest body = new UpdateActivationStatusRequest();
+        body.setUsername("John.Doe");
+        body.setActive(true);
 
-        doNothing().when(traineeService).activateTrainee(eq("John.Doe"), eq(true));
+        doNothing().when(traineeService).activateTrainee("John.Doe", true);
 
-        mockMvc.perform(patch("/api/trainees/activation")
+        mockMvc.perform(patch("/api/trainees/{username}/activation", "John.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
     }
 
     @Test
     void updateTraineeTrainers_shouldReturnOk() throws Exception {
-        List<String> trainerUsernames = List.of("trainer1", "trainer2");
-        UpdateTraineeTrainersRequest request = new UpdateTraineeTrainersRequest("John.Doe", trainerUsernames);
+        List<String> trainers = List.of("trainer1", "trainer2");
+        UpdateTraineeTrainersRequest body = new UpdateTraineeTrainersRequest("John.Doe", trainers);
 
-        when(traineeService.updateTrainers(eq("John.Doe"), eq(trainerUsernames))).thenReturn(new Trainee());
+        when(traineeService.updateTrainers("John.Doe", trainers)).thenReturn(new Trainee());
 
-        mockMvc.perform(put("/api/trainees/trainee")
+        mockMvc.perform(put("/api/trainees/{username}/trainers", "John.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
     }
 }

@@ -1,6 +1,7 @@
 package com.epam.dto.trainer;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class TrainerRegistrationRequest {
 
@@ -8,7 +9,7 @@ public class TrainerRegistrationRequest {
     private String firstName;
     @NotBlank
     private String lastName;
-    @NotBlank
+    @NotNull
     private Long specializationId;
 
     public String getFirstName() {

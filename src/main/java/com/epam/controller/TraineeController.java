@@ -25,9 +25,8 @@ public class TraineeController {
     }
 
     @Operation(summary = "Register a new trainee")
-    @PostMapping("/register")
-    @Valid
-    public ResponseEntity<UserCredentialsResponse>registerTrainee(@RequestBody TraineeRegistrationRequest traineeRegistrationRequest){
+    @PostMapping
+    public ResponseEntity<UserCredentialsResponse>registerTrainee(@Valid @RequestBody TraineeRegistrationRequest traineeRegistrationRequest){
         Trainee trainee = new Trainee();
         User user = new User();
         user.setFirstName(traineeRegistrationRequest.getFirstName());
@@ -48,8 +47,8 @@ public class TraineeController {
 
 
     @Operation(summary = "Get a trainee's profile by username")
-    @GetMapping("/profile")
-    public ResponseEntity<TraineeProfileResponse>getTrainee(@RequestParam String username){
+    @GetMapping("/{username}")
+    public ResponseEntity<TraineeProfileResponse>getTrainee(@PathVariable String username){
         Trainee trainee = gymFacade.trainees().findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("Trainee with username: " + username + " not found"));
 
         TraineeProfileResponse traineeProfileResponse = new TraineeProfileResponse();
@@ -76,12 +75,11 @@ public class TraineeController {
     }
 
     @Operation(summary = "Update an existing trainee's profile")
-    @PutMapping("/profile")
-    @Valid
-    public ResponseEntity<TraineeProfileResponse> updateTraineeProfile(@RequestBody UpdateTraineeProfileRequest updateTraineeProfileRequest) {
+    @PutMapping("/{username}")
+    public ResponseEntity<TraineeProfileResponse> updateTraineeProfile(@PathVariable String username, @Valid @RequestBody UpdateTraineeProfileRequest updateTraineeProfileRequest) {
 
-        Trainee traineeToUpdate = gymFacade.trainees().findByUsername(updateTraineeProfileRequest.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Trainee with username '" + updateTraineeProfileRequest.getUsername() + "' not found."));
+        Trainee traineeToUpdate = gymFacade.trainees().findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainee with username '" + username + "' not found."));
 
         User userToUpdate = traineeToUpdate.getUser();
         userToUpdate.setFirstName(updateTraineeProfileRequest.getFirstName());
@@ -121,18 +119,17 @@ public class TraineeController {
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/activation")
-    @Valid
-    public ResponseEntity<Void> activateDeactivateTrainee(@RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
-        gymFacade.trainees().activateTrainee(updateActivationStatusRequest.getUsername(), updateActivationStatusRequest.isActive());
+    @Operation(summary = "Activate or deactivate a trainee")
+    @PatchMapping("/{username}/activation")
+    public ResponseEntity<Void> activateDeactivateTrainee(@PathVariable String username,@Valid @RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
+        gymFacade.trainees().activateTrainee(username, updateActivationStatusRequest.isActive());
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Activate or deactivate a trainee")
-    @PutMapping("/trainee")
-    @Valid
-    public ResponseEntity<Void> updateTraineeTrainers(@RequestBody UpdateTraineeTrainersRequest updateTraineeTrainersRequest){
-        gymFacade.trainees().updateTrainers(updateTraineeTrainersRequest.getTraineeUsername(), updateTraineeTrainersRequest.getTrainers());
+    @Operation(summary = "Update the trainers assigned to a trainee")
+    @PutMapping("/{username}/trainers")
+    public ResponseEntity<Void> updateTraineeTrainers(@PathVariable String username, @Valid @RequestBody UpdateTraineeTrainersRequest updateTraineeTrainersRequest){
+        gymFacade.trainees().updateTrainers(username, updateTraineeTrainersRequest.getTrainers());
         return ResponseEntity.ok().build();
     }
 

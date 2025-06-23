@@ -22,30 +22,29 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TrainerController.class)
-public class TrainerControllerTest {
+class TrainerControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private GymFacade gymFacade;
-
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private GymFacade gymFacade;
 
     private TrainerService trainerService;
     private TrainingTypeService trainingTypeService;
 
     @BeforeEach
     void setUp() {
-        trainerService = Mockito.mock(TrainerService.class);
+        trainerService      = Mockito.mock(TrainerService.class);
         trainingTypeService = Mockito.mock(TrainingTypeService.class);
 
         when(gymFacade.trainers()).thenReturn(trainerService);
@@ -54,25 +53,27 @@ public class TrainerControllerTest {
 
     @Test
     void registerTrainer_shouldReturnCreated() throws Exception {
-        TrainerRegistrationRequest request = new TrainerRegistrationRequest();
-        request.setFirstName("Jane");
-        request.setLastName("Doe");
-        request.setSpecializationId(1L);
+        TrainerRegistrationRequest body = new TrainerRegistrationRequest();
+        body.setFirstName("Jane");
+        body.setLastName("Doe");
+        body.setSpecializationId(1L);
+
+        TrainingType spec = new TrainingType();
+        when(trainingTypeService.findById(1L)).thenReturn(Optional.of(spec));
 
         User user = new User();
         user.setUsername("Jane.Doe");
-        user.setPassword("password");
+        user.setPassword("pwd");
 
         Trainer trainer = new Trainer();
         trainer.setUser(user);
-        trainer.setSpecialization(new TrainingType());
+        trainer.setSpecialization(spec);
 
-        when(trainingTypeService.findById(1L)).thenReturn(Optional.of(new TrainingType()));
         when(trainerService.create(any(Trainer.class))).thenReturn(trainer);
 
-        mockMvc.perform(post("/api/trainers/register")
+        mockMvc.perform(post("/api/trainers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated());
     }
 
@@ -83,65 +84,60 @@ public class TrainerControllerTest {
         user.setLastName("Doe");
         user.setActive(true);
 
-        TrainingType specialization = new TrainingType();
-        specialization.setName("Yoga");
+        TrainingType spec = new TrainingType();
+        spec.setName("Yoga");
 
         Trainer trainer = new Trainer();
         trainer.setUser(user);
-        trainer.setSpecialization(specialization);
+        trainer.setSpecialization(spec);
 
         when(trainerService.findByUsername("Jane.Doe")).thenReturn(Optional.of(trainer));
 
-        mockMvc.perform(get("/api/trainers/profile")
-                        .param("username", "Jane.Doe"))
+        mockMvc.perform(get("/api/trainers/{username}", "Jane.Doe"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void updateTrainerProfile_shouldReturnOk() throws Exception {
-        UpdateTrainerProfileRequest request = new UpdateTrainerProfileRequest();
-        request.setUsername("Jane.Doe");
-        request.setFirstName("Jane");
-        request.setLastName("Doe");
-        request.setActive(true);
+        UpdateTrainerProfileRequest body = new UpdateTrainerProfileRequest();
+        body.setUsername("Jane.Doe");      // satisfies @NotBlank in DTO
+        body.setFirstName("Jane");
+        body.setLastName("Doe");
+        body.setActive(true);
 
-        Trainer existingTrainer = new Trainer();
-        existingTrainer.setUser(new User());
-        existingTrainer.setSpecialization(new TrainingType());
+        Trainer existing = new Trainer();
+        existing.setUser(new User());
+        existing.setSpecialization(new TrainingType());
 
-        User updatedUser = new User();
-        updatedUser.setFirstName(request.getFirstName());
-        updatedUser.setLastName(request.getLastName());
-        updatedUser.setActive(request.isActive());
+        Trainer updated = new Trainer();
+        updated.setUser(new User());
+        updated.getUser().setFirstName(body.getFirstName());
+        updated.getUser().setLastName(body.getLastName());
+        updated.getUser().setActive(body.isActive());
+        TrainingType spec = new TrainingType();
+        spec.setName("Yoga");
+        updated.setSpecialization(spec);
 
-        TrainingType specialization = new TrainingType();
-        specialization.setName("Yoga");
+        when(trainerService.findByUsername("Jane.Doe")).thenReturn(Optional.of(existing));
+        when(trainerService.update(any(Trainer.class))).thenReturn(updated);
 
-        Trainer updatedTrainer = new Trainer();
-        updatedTrainer.setUser(updatedUser);
-        updatedTrainer.setSpecialization(specialization);
-
-
-        when(trainerService.findByUsername("Jane.Doe")).thenReturn(Optional.of(existingTrainer));
-        when(trainerService.update(any(Trainer.class))).thenReturn(updatedTrainer);
-
-        mockMvc.perform(put("/api/trainers/profile")
+        mockMvc.perform(put("/api/trainers/{username}", "Jane.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
     }
 
     @Test
     void activateDeactivateTrainee_shouldReturnOk() throws Exception {
-        UpdateActivationStatusRequest request = new UpdateActivationStatusRequest();
-        request.setUsername("Jane.Doe");
-        request.setActive(true);
+        UpdateActivationStatusRequest body = new UpdateActivationStatusRequest();
+        body.setUsername("Jane.Doe");
+        body.setActive(true);
 
-        doNothing().when(trainerService).activateTrainer(eq("Jane.Doe"), eq(true));
+        doNothing().when(trainerService).activateTrainer("Jane.Doe", true);
 
-        mockMvc.perform(patch("/api/trainers/activation")
+        mockMvc.perform(patch("/api/trainers/{username}/activation", "Jane.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
     }
 }

@@ -20,9 +20,8 @@ public class AuthController {
     }
 
     @Operation(summary = "Login for Trainee or Trainer")
-    @Valid
-    @GetMapping("/login")
-    public ResponseEntity<Void> login (@RequestParam String username, @RequestParam String password){
+    @GetMapping("/login/{username}")
+    public ResponseEntity<Void> login (@PathVariable String username,@Valid @RequestParam String password){
         boolean trainerlogin = gymFacade.trainers().checkCredentials(username, password);
         boolean traineelogin = gymFacade.trainees().checkCredentials(username, password);
 
@@ -36,16 +35,16 @@ public class AuthController {
 
     @Operation(summary = "Change password for Trainee or Trainer")
     @Valid
-    @PutMapping("/change-pass")
-    public ResponseEntity<Void>changePassword(@RequestBody ChangePasswordRequest changePasswordRequest){
-        boolean traineeLoginIsValid = gymFacade.trainees().checkCredentials(changePasswordRequest.getUsername(), changePasswordRequest.getOldPass());
-        boolean trainerLoginIsValid = gymFacade.trainers().checkCredentials(changePasswordRequest.getUsername(), changePasswordRequest.getOldPass());
+    @PutMapping("/{username}/password")
+    public ResponseEntity<Void>changePassword(@PathVariable String username, @Valid @RequestBody ChangePasswordRequest changePasswordRequest){
+        boolean traineeLoginIsValid = gymFacade.trainees().checkCredentials(username, changePasswordRequest.getOldPass());
+        boolean trainerLoginIsValid = gymFacade.trainers().checkCredentials(username, changePasswordRequest.getOldPass());
 
         if (traineeLoginIsValid){
-            gymFacade.trainees().changePassword(changePasswordRequest.getUsername(), changePasswordRequest.getNewPass());
+            gymFacade.trainees().changePassword(username, changePasswordRequest.getNewPass());
             return ResponseEntity.ok().build();
         }else if (trainerLoginIsValid){
-            gymFacade.trainers().changePassword(changePasswordRequest.getUsername(), changePasswordRequest.getNewPass());
+            gymFacade.trainers().changePassword(username, changePasswordRequest.getNewPass());
             return ResponseEntity.ok().build();
         }else{
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

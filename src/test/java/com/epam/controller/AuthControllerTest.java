@@ -43,90 +43,88 @@ class AuthControllerTest {
         when(gymFacade.trainers()).thenReturn(trainerService);
     }
 
+    /* ---------- GET /api/auth/login/{username}?password=... ---------- */
+
     @Test
-    void testLogin_whenTraineeCredentialsAreValid_shouldReturnOk() throws Exception {
+    void login_withValidTrainee_shouldReturnOk() throws Exception {
         when(traineeService.checkCredentials("user", "password")).thenReturn(true);
         when(trainerService.checkCredentials("user", "password")).thenReturn(false);
 
-        mockMvc.perform(get("/api/auth/login")
-                        .param("username", "user")
+        mockMvc.perform(get("/api/auth/login/{username}", "user")
                         .param("password", "password"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void testLogin_whenTrainerCredentialsAreValid_shouldReturnOk() throws Exception {
+    void login_withValidTrainer_shouldReturnOk() throws Exception {
         when(traineeService.checkCredentials("user", "password")).thenReturn(false);
         when(trainerService.checkCredentials("user", "password")).thenReturn(true);
 
-        mockMvc.perform(get("/api/auth/login")
-                        .param("username", "user")
+        mockMvc.perform(get("/api/auth/login/{username}", "user")
                         .param("password", "password"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void testLogin_whenCredentialsAreInvalid_shouldReturnUnauthorized() throws Exception {
-        when(traineeService.checkCredentials("user", "wrong_password")).thenReturn(false);
-        when(trainerService.checkCredentials("user", "wrong_password")).thenReturn(false);
+    void login_withInvalidCredentials_shouldReturnUnauthorized() throws Exception {
+        when(traineeService.checkCredentials("user", "wrong")).thenReturn(false);
+        when(trainerService.checkCredentials("user", "wrong")).thenReturn(false);
 
-        mockMvc.perform(get("/api/auth/login")
-                        .param("username", "user")
-                        .param("password", "wrong_password"))
+        mockMvc.perform(get("/api/auth/login/{username}", "user")
+                        .param("password", "wrong"))
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    void testChangePassword_whenTraineeIsValid_shouldReturnOk() throws Exception {
+    /* ---------- PUT /api/auth/{username}/password ---------- */
 
-        ChangePasswordRequest request = new ChangePasswordRequest(null, null, null); // Call empty constructor
-        request.setUsername("user");
-        request.setOldPass("old_pass");
-        request.setNewPass("new_pass");
+    @Test
+    void changePassword_forTrainee_shouldReturnOk() throws Exception {
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setUsername("user");          // @NotBlank field in DTO
+        body.setOldPass("old_pass");
+        body.setNewPass("new_pass");
 
         when(traineeService.checkCredentials("user", "old_pass")).thenReturn(true);
 
-        mockMvc.perform(put("/api/auth/change-pass")
+        mockMvc.perform(put("/api/auth/{username}/password", "user")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
 
         verify(traineeService).changePassword("user", "new_pass");
     }
 
     @Test
-    void testChangePassword_whenTrainerIsValid_shouldReturnOk() throws Exception {
-
-        ChangePasswordRequest request = new ChangePasswordRequest(null, null, null); // Call empty constructor
-        request.setUsername("user");
-        request.setOldPass("old_pass");
-        request.setNewPass("new_pass");
+    void changePassword_forTrainer_shouldReturnOk() throws Exception {
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setUsername("user");
+        body.setOldPass("old_pass");
+        body.setNewPass("new_pass");
 
         when(traineeService.checkCredentials("user", "old_pass")).thenReturn(false);
         when(trainerService.checkCredentials("user", "old_pass")).thenReturn(true);
 
-        mockMvc.perform(put("/api/auth/change-pass")
+        mockMvc.perform(put("/api/auth/{username}/password", "user")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
 
         verify(trainerService).changePassword("user", "new_pass");
     }
 
     @Test
-    void testChangePassword_whenCredentialsAreInvalid_shouldReturnUnauthorized() throws Exception {
+    void changePassword_withInvalidCredentials_shouldReturnUnauthorized() throws Exception {
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setUsername("user");
+        body.setOldPass("wrong_old");
+        body.setNewPass("new_pass");
 
-        ChangePasswordRequest request = new ChangePasswordRequest(null, null, null); // Call empty constructor
-        request.setUsername("user");
-        request.setOldPass("wrong_old_pass");
-        request.setNewPass("new_pass");
+        when(traineeService.checkCredentials("user", "wrong_old")).thenReturn(false);
+        when(trainerService.checkCredentials("user", "wrong_old")).thenReturn(false);
 
-        when(traineeService.checkCredentials("user", "wrong_old_pass")).thenReturn(false);
-        when(trainerService.checkCredentials("user", "wrong_old_pass")).thenReturn(false);
-
-        mockMvc.perform(put("/api/auth/change-pass")
+        mockMvc.perform(put("/api/auth/{username}/password", "user")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isUnauthorized());
     }
 }

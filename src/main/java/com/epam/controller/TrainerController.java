@@ -32,9 +32,8 @@ public class TrainerController {
 
 
     @Operation(summary = "Register a new trainer")
-    @PostMapping("/register")
-    @Valid
-    public ResponseEntity<UserCredentialsResponse> registerTrainer(@RequestBody TrainerRegistrationRequest trainerRegistrationRequest){
+    @PostMapping
+    public ResponseEntity<UserCredentialsResponse> registerTrainer(@Valid @RequestBody TrainerRegistrationRequest trainerRegistrationRequest){
         Trainer trainer = new Trainer();
         User user = new User();
         user.setFirstName(trainerRegistrationRequest.getFirstName());
@@ -56,8 +55,8 @@ public class TrainerController {
 
 
     @Operation(summary = "Get a trainer's profile by username")
-    @GetMapping("/profile")
-    public ResponseEntity<TrainerProfileResponse>getTrainer(@RequestParam String username){
+    @GetMapping("/{username}")
+    public ResponseEntity<TrainerProfileResponse>getTrainer(@PathVariable String username){
         Trainer trainer = gymFacade.trainers().findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("Trainer with username: " + username + " not found"));
 
         TrainerProfileResponse trainerProfileResponse = new TrainerProfileResponse();
@@ -81,12 +80,11 @@ public class TrainerController {
 
 
     @Operation(summary = "Update an existing trainer's profile")
-    @PutMapping("/profile")
-    @Valid
-    public ResponseEntity<TrainerProfileResponse> updateTrainerProfile(@RequestBody UpdateTrainerProfileRequest updateTrainerProfileRequest) {
+    @PutMapping("/{username}")
+    public ResponseEntity<TrainerProfileResponse> updateTrainerProfile(@PathVariable String username, @Valid @RequestBody UpdateTrainerProfileRequest updateTrainerProfileRequest) {
 
-        Trainer trainerToUpdate = gymFacade.trainers().findByUsername(updateTrainerProfileRequest.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Trainee with username '" + updateTrainerProfileRequest.getUsername() + "' not found."));
+        Trainer trainerToUpdate = gymFacade.trainers().findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer with username '" + username + "' not found."));
 
         User userToUpdate = trainerToUpdate.getUser();
         userToUpdate.setFirstName(updateTrainerProfileRequest.getFirstName());
@@ -116,12 +114,9 @@ public class TrainerController {
 
 
     @Operation(summary = "Activate or deactivate a trainer")
-    @PatchMapping("/activation")
-    @Valid
-    public ResponseEntity<Void> activateDeactivateTrainee(@RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
-        gymFacade.trainers().activateTrainer(updateActivationStatusRequest.getUsername(), updateActivationStatusRequest.isActive());
+    @PatchMapping("/{username}/activation")
+    public ResponseEntity<Void> activateDeactivateTrainee(@PathVariable String username,@Valid @RequestBody UpdateActivationStatusRequest updateActivationStatusRequest) {
+        gymFacade.trainers().activateTrainer(username, updateActivationStatusRequest.isActive());
         return ResponseEntity.ok().build();
     }
-
-
 }

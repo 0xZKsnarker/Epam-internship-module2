@@ -1,6 +1,7 @@
 package com.epam.dto.trainer;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class UpdateTrainerProfileRequest {
 
@@ -10,7 +11,7 @@ public class UpdateTrainerProfileRequest {
     private String firstName;
     @NotBlank
     private String lastName;
-    @NotBlank
+    @NotNull
     private boolean isActive;
 
     public String getUsername() {

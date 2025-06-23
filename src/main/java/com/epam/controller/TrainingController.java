@@ -6,8 +6,6 @@ import com.epam.domain.Trainer;
 import com.epam.domain.Training;
 import com.epam.domain.TrainingType;
 import com.epam.dto.trainee.TrainerInfo;
-import com.epam.dto.trainee.UpdateTraineeProfileRequest;
-import com.epam.dto.trainee.UpdateTraineeTrainersRequest;
 import com.epam.dto.training.AddTrainingRequest;
 import com.epam.dto.training.TraineeTrainingResponse;
 import com.epam.dto.training.TrainerTrainingResponse;
@@ -37,9 +35,8 @@ public class TrainingController {
     }
 
     @Operation(summary = "Add a new training session")
-    @PostMapping("/create")
-    @Valid
-    public ResponseEntity<Void>createNewTraining (@RequestBody AddTrainingRequest addTrainingRequest){
+    @PostMapping
+    public ResponseEntity<Void>createNewTraining (@Valid @RequestBody AddTrainingRequest addTrainingRequest){
         Trainee trainee = gymFacade.trainees().findByUsername(addTrainingRequest.getTraineeUsername()).orElseThrow(() -> new ResourceNotFoundException("\"Trainee not found for username: " + addTrainingRequest.getTraineeUsername()));
 
         Trainer trainer = gymFacade.trainers().findByUsername(addTrainingRequest.getTrainerUsername())
@@ -64,7 +61,7 @@ public class TrainingController {
     }
 
     @Operation(summary = "Get a trainee's trainings list with filtering")
-    @GetMapping("/trainee/{username}")
+    @GetMapping("/trainees/{username}")
     public ResponseEntity<List<TraineeTrainingResponse>> getTraineeTrainings(
             @PathVariable String username,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -88,7 +85,7 @@ public class TrainingController {
     }
 
     @Operation(summary = "Get a trainer's trainings list with filtering")
-    @GetMapping("/trainer/{username}")
+    @GetMapping("/trainers/{username}")
     public ResponseEntity<List<TrainerTrainingResponse>> getTrainerTrainings(
             @PathVariable String username,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -111,8 +108,8 @@ public class TrainingController {
     }
 
     @Operation(summary = "Get trainers not assigned to a specific trainee")
-    @GetMapping("/not-assigned")
-    public ResponseEntity<List<TrainerInfo>> getNotAssignedTrainers(@RequestParam String username) {
+    @GetMapping("/trainees/{username}/unassigned-trainers")
+    public ResponseEntity<List<TrainerInfo>> getNotAssignedTrainers(@PathVariable String username) {
         List<Trainer> trainers = gymFacade.trainers().getUnassignedTrainers(username);
 
         List<TrainerInfo> response = trainers.stream()

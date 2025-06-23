@@ -23,12 +23,11 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TrainingController.class)
-public class TrainingControllerTest {
+class TrainingControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -44,19 +43,19 @@ public class TrainingControllerTest {
     private TrainingService trainingService;
     private TrainingTypeService trainingTypeService;
 
-
     @BeforeEach
     void setUp() {
-        traineeService = Mockito.mock(TraineeService.class);
-        trainerService = Mockito.mock(TrainerService.class);
-        trainingService = Mockito.mock(TrainingService.class);
+        traineeService      = Mockito.mock(TraineeService.class);
+        trainerService      = Mockito.mock(TrainerService.class);
+        trainingService     = Mockito.mock(TrainingService.class);
         trainingTypeService = Mockito.mock(TrainingTypeService.class);
 
-        when(gymFacade.trainees()).thenReturn(traineeService);
-        when(gymFacade.trainers()).thenReturn(trainerService);
-        when(gymFacade.trainings()).thenReturn(trainingService);
-        when(gymFacade.trainingTypes()).thenReturn(trainingTypeService);
+        when(gymFacade.trainees())      .thenReturn(traineeService);
+        when(gymFacade.trainers())      .thenReturn(trainerService);
+        when(gymFacade.trainings())     .thenReturn(trainingService);
+        when(gymFacade.trainingTypes()) .thenReturn(trainingTypeService);
     }
+
 
     @Test
     void createNewTraining_shouldReturnCreated() throws Exception {
@@ -64,7 +63,7 @@ public class TrainingControllerTest {
         request.setTraineeUsername("John.Doe");
         request.setTrainerUsername("Jane.Doe");
         request.setTrainingName("Morning Yoga");
-        request.setTrainingDate(LocalDate.of(2024, 5, 21));
+        request.setTrainingDate(LocalDate.of(2025, 6, 23));
         request.setDurationOfTraining(60);
 
         Trainee trainee = new Trainee();
@@ -75,12 +74,12 @@ public class TrainingControllerTest {
         when(trainerService.findByUsername("Jane.Doe")).thenReturn(Optional.of(trainer));
         when(trainingService.create(any(Training.class))).thenReturn(new Training());
 
-
-        mockMvc.perform(post("/api/trainings/create")
+        mockMvc.perform(post("/api/trainings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
     }
+
 
     @Test
     void getTrainingTypes_shouldReturnOk() throws Exception {
@@ -90,29 +89,36 @@ public class TrainingControllerTest {
                 .andExpect(status().isOk());
     }
 
+
     @Test
     void getTraineeTrainings_shouldReturnOk() throws Exception {
-        when(trainingService.getTraineeTrainingsByCriteria(any(), any(), any(), any(), any()))
-                .thenReturn(Collections.emptyList());
+        when(trainingService.getTraineeTrainingsByCriteria(
+                any(String.class), any(), any(), any(), any())
+        ).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/trainings/trainee/{username}", "John.Doe"))
+        mockMvc.perform(get("/api/trainings/trainees/{username}", "John.Doe"))
                 .andExpect(status().isOk());
     }
+
 
     @Test
     void getTrainerTrainings_shouldReturnOk() throws Exception {
-        when(trainingService.getTrainerTrainingsByCriteria(any(), any(), any(), any()))
-                .thenReturn(Collections.emptyList());
+        when(trainingService.getTrainerTrainingsByCriteria(
+                any(String.class), any(), any(), any())
+        ).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/trainings/trainer/{username}", "Jane.Doe"))
+        mockMvc.perform(get("/api/trainings/trainers/{username}", "Jane.Doe"))
                 .andExpect(status().isOk());
     }
 
+
     @Test
     void getNotAssignedTrainers_shouldReturnOk() throws Exception {
-        when(trainerService.getUnassignedTrainers(any(String.class))).thenReturn(Collections.emptyList());
+        when(trainerService.getUnassignedTrainers(any(String.class)))
+                .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/trainings/not-assigned").param("username", "someuser"))
+        mockMvc.perform(get("/api/trainings/trainees/{username}/unassigned-trainers",
+                        "John.Doe"))
                 .andExpect(status().isOk());
     }
 }
