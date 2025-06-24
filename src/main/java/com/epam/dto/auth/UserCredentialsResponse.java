@@ -5,7 +5,11 @@ public class UserCredentialsResponse {
     private String username;
     private String password;
 
-    public UserCredentialsResponse(String username, String password){}
+    public UserCredentialsResponse(String username, String password){
+        this.username = username;
+        this.password = password;
+    }
+
 
     public String getPassword() {
         return password;

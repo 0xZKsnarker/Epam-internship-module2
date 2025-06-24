@@ -29,6 +29,7 @@ public class TrainingServiceImpl implements TrainingService {
 
     //create a new training
     @Override
+    @Transactional
     public Training create(Training training) {
         trainingDao.create(training);
         log.info("Scheduled training {} (id={})",

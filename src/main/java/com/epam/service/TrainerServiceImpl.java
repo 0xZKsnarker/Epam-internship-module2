@@ -34,6 +34,7 @@ public class TrainerServiceImpl implements TrainerService {
     }
 
     @Override
+    @Transactional
     public Trainer create(Trainer trainer) {
         log.info("Creating trainer");
         User user = trainer.getUser();

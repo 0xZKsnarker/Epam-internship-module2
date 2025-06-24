@@ -15,7 +15,9 @@ public class Trainee {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
+    @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
+    @Column(name = "address")
     private String address;
     @OneToMany(mappedBy = "trainee", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Training> trainings = new HashSet<>();
