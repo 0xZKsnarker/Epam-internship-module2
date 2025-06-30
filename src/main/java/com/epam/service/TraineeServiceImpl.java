@@ -7,7 +7,8 @@ import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
-import io.micrometer.core.instrument.MeterRegistry;  
+import com.epam.utils.CredentialsService;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,13 +28,15 @@ public class TraineeServiceImpl implements TraineeService {
     private TraineeDao traineeDao;
     private TrainerDao trainerDao;
     private MeterRegistry meterRegistry;
+    private CredentialsService credentialsService;
 
 
     @Autowired
-    public TraineeServiceImpl(TraineeDao traineeDao, TrainerDao trainerDao, MeterRegistry meterRegistry) {
+    public TraineeServiceImpl(TraineeDao traineeDao, TrainerDao trainerDao, MeterRegistry meterRegistry, CredentialsService credentialsService) {
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.meterRegistry = meterRegistry;
+        this.credentialsService = credentialsService;
     }
     
     @Override
@@ -116,7 +119,7 @@ public class TraineeServiceImpl implements TraineeService {
     public boolean checkCredentials(String username, String password) {
         Optional<Trainee> optionalTrainee = traineeDao.findByUsername(username);
         if (optionalTrainee.isPresent()) {
-            return optionalTrainee.get().getUser().getPassword().equals(password);
+            return credentialsService.checkCredentials(optionalTrainee.get().getUser(), password);
         }
         return false;
     }

@@ -2,6 +2,7 @@ package com.epam.controller;
 
 import com.epam.dto.auth.ChangePasswordRequest;
 import com.epam.facade.GymFacade;
+import com.epam.utils.CredentialsService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -13,20 +14,26 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-
     private final GymFacade gymFacade;
+    private final CredentialsService credentialsService;
     private MeterRegistry meterRegistry;
 
-    public AuthController(GymFacade gymFacade, MeterRegistry meterRegistry) {
+    public AuthController(GymFacade gymFacade, CredentialsService credentialsService, MeterRegistry meterRegistry) {
         this.gymFacade = gymFacade;
+        this.credentialsService = credentialsService;
         this.meterRegistry = meterRegistry;
     }
 
     @Operation(summary = "Login for Trainee or Trainer")
     @GetMapping("/login/{username}")
     public ResponseEntity<Void> login (@PathVariable String username,@Valid @RequestParam String password){
-        boolean trainerlogin = gymFacade.trainers().checkCredentials(username, password);
-        boolean traineelogin = gymFacade.trainees().checkCredentials(username, password);
+        boolean trainerlogin = gymFacade.trainers().findByUsername(username)
+                .map(trainer -> credentialsService.checkCredentials(trainer.getUser(), password))
+                .orElse(false);
+
+        boolean traineelogin = gymFacade.trainees().findByUsername(username)
+                .map(trainee -> credentialsService.checkCredentials(trainee.getUser(), password))
+                .orElse(false);
 
         if(traineelogin || trainerlogin){
             meterRegistry.counter("auth.logins", "status", "success", "username", username).increment();
@@ -37,24 +44,24 @@ public class AuthController {
         }
     }
 
-
     @Operation(summary = "Change password for Trainee or Trainer")
     @Valid
     @PutMapping("/{username}/password")
     public ResponseEntity<Void>changePassword(@PathVariable String username, @Valid @RequestBody ChangePasswordRequest changePasswordRequest){
-        boolean traineeLoginIsValid = gymFacade.trainees().checkCredentials(username, changePasswordRequest.getOldPass());
-        boolean trainerLoginIsValid = gymFacade.trainers().checkCredentials(username, changePasswordRequest.getOldPass());
-
-        if (traineeLoginIsValid){
+        var traineeOpt = gymFacade.trainees().findByUsername(username);
+        if (traineeOpt.isPresent() && credentialsService.checkCredentials(traineeOpt.get().getUser(), changePasswordRequest.getOldPass())) {
             gymFacade.trainees().changePassword(username, changePasswordRequest.getNewPass());
-            meterRegistry.counter("auth.password.changes", "username", username).increment(); // <-- ADD THIS
+            meterRegistry.counter("auth.password.changes", "username", username).increment();
             return ResponseEntity.ok().build();
-        }else if (trainerLoginIsValid){
-            gymFacade.trainers().changePassword(username, changePasswordRequest.getNewPass());
-            meterRegistry.counter("auth.password.changes", "username", username).increment(); // <-- ADD THIS
-            return ResponseEntity.ok().build();
-        }else{
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        var trainerOpt = gymFacade.trainers().findByUsername(username);
+        if (trainerOpt.isPresent() && credentialsService.checkCredentials(trainerOpt.get().getUser(), changePasswordRequest.getOldPass())) {
+            gymFacade.trainers().changePassword(username, changePasswordRequest.getNewPass());
+            meterRegistry.counter("auth.password.changes", "username", username).increment();
+            return ResponseEntity.ok().build();
+        }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

@@ -6,6 +6,7 @@ import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
+import com.epam.utils.CredentialsService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +25,7 @@ public class TrainerServiceImpl implements TrainerService {
     private TrainerDao trainerDao;
     private TraineeDao traineeDao;
     private MeterRegistry meterRegistry;
-
+    private CredentialsService credentialsService;
     @Autowired
     public void setTrainerDao(TrainerDao trainerDao) {
         this.trainerDao = trainerDao;
@@ -36,6 +37,10 @@ public class TrainerServiceImpl implements TrainerService {
     @Autowired
     public void setMeterRegistry(MeterRegistry meterRegistry){
         this.meterRegistry = meterRegistry;
+    }
+    @Autowired
+    public void setCredentialsService(CredentialsService credentialsService){
+        this.credentialsService = credentialsService;
     }
 
     @Override
@@ -107,7 +112,7 @@ public class TrainerServiceImpl implements TrainerService {
     public boolean checkCredentials(String username, String password) {
         Optional<Trainer> optionalTrainer = trainerDao.findByUsername(username);
         if (optionalTrainer.isPresent()) {
-            return optionalTrainer.get().getUser().getPassword().equals(password);
+            return credentialsService.checkCredentials(optionalTrainer.get().getUser(), password);
         }
         return false;
     }

@@ -5,6 +5,9 @@ import com.epam.dao.TrainingTypeDao;
 import com.epam.domain.Training;
 import com.epam.domain.TrainingType;
 import com.epam.exception.ResourceNotFoundException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,11 +32,20 @@ class TrainingServiceImplTest {
     @InjectMocks
     private TrainingServiceImpl service;
 
+    @BeforeEach
+    void setUp() {
+        MeterRegistry realMeterRegistry = new SimpleMeterRegistry();
+
+        service = new TrainingServiceImpl(trainingDao, trainingTypeDao, realMeterRegistry);
+    }
 
     private static Training training(long id, String name) {
         Training t = new Training();
         t.setId(id);
         t.setTrainingName(name);
+        TrainingType type = new TrainingType();
+        type.setName("MockType");
+        t.setTrainingType(type);
         return t;
     }
 

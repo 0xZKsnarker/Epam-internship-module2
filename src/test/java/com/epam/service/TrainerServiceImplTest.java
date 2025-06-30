@@ -6,12 +6,17 @@ import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
+import com.epam.utils.CredentialsService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -21,9 +26,19 @@ import static org.mockito.Mockito.*;
 class TrainerServiceImplTest {
 
     @Mock   private TrainerDao trainerDao;
-    @InjectMocks
-    private TrainerServiceImpl service;
     @Mock   private TraineeDao traineeDao;
+
+    private TrainerServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        service = new TrainerServiceImpl();
+
+        ReflectionTestUtils.setField(service, "trainerDao", trainerDao);
+        ReflectionTestUtils.setField(service, "traineeDao", traineeDao);
+        ReflectionTestUtils.setField(service, "credentialsService", new CredentialsService());
+        ReflectionTestUtils.setField(service, "meterRegistry", new SimpleMeterRegistry());
+    }
 
     private static User user(String first, String last,
                              String uname, String pwd, boolean active) {
@@ -47,8 +62,8 @@ class TrainerServiceImplTest {
     @Test
     @DisplayName("create() generates credentials and persists the trainer")
     void create_generatesCredentials() {
-        when(traineeDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainee check
-        when(trainerDao.findByUsername("John.Smith")).thenReturn(Optional.empty()); // Mock for username generation
+        when(traineeDao.findAll()).thenReturn(Collections.emptyList());
+        when(trainerDao.findByUsername("John.Smith")).thenReturn(Optional.empty());
 
         Trainer toSave = trainer(0, "John", "Smith", null, null);
 
@@ -63,9 +78,9 @@ class TrainerServiceImplTest {
     @Test
     @DisplayName("create() resolves username collision by suffixing")
     void create_usernameCollision() {
-        when(traineeDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainee check
-        when(trainerDao.findByUsername("John.Smith")).thenReturn(Optional.of(new Trainer())); // Mock collision
-        when(trainerDao.findByUsername("John.Smith.1")).thenReturn(Optional.empty()); // Mock available username
+        when(traineeDao.findAll()).thenReturn(Collections.emptyList());
+        when(trainerDao.findByUsername("John.Smith")).thenReturn(Optional.of(new Trainer()));
+        when(trainerDao.findByUsername("John.Smith.1")).thenReturn(Optional.empty());
 
         Trainer toSave = trainer(0, "John", "Smith", null, null);
 
@@ -88,7 +103,6 @@ class TrainerServiceImplTest {
 
         Trainer trainerToCreate = trainer(0, "John", "Smith", null, null);
 
-        // Act & Assert
         assertThrows(IllegalStateException.class, () -> {
             service.create(trainerToCreate);
         }, "A user with name John Smith already exists as a Trainee.");
@@ -120,7 +134,6 @@ class TrainerServiceImplTest {
         }
     }
 
-
     @Nested
     class CheckCredentials {
 
@@ -143,9 +156,8 @@ class TrainerServiceImplTest {
         }
     }
 
-
     @Test
-    @DisplayName("changePassword() updates the trainer’s password")
+    @DisplayName("changePassword() updates the trainer's password")
     void changePassword_updates() {
         Trainer tr = trainer(4, "P", "Q", "P.Q", "old");
         when(trainerDao.findByUsername("P.Q")).thenReturn(Optional.of(tr));
@@ -163,7 +175,6 @@ class TrainerServiceImplTest {
                 () -> service.changePassword("ghost", "x"));
     }
 
-
     @Test
     @DisplayName("activateTrainer() flips the active flag")
     void activate_flipsFlag() {
@@ -175,7 +186,6 @@ class TrainerServiceImplTest {
 
         assertTrue(tr.getUser().isActive());
     }
-
 
     @Test
     void findById_delegates() {
@@ -197,7 +207,6 @@ class TrainerServiceImplTest {
         when(trainerDao.findByUsername("C.D")).thenReturn(Optional.of(tr));
         assertSame(tr, service.findByUsername("C.D").orElseThrow());
     }
-
 
     @Test
     @DisplayName("getUnassignedTrainers() delegates to DAO")

@@ -6,6 +6,9 @@ import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
+import com.epam.utils.CredentialsService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,12 +24,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TraineeServiceImplTest {
 
-    @Mock  private TraineeDao traineeDao;
-    @Mock  private TrainerDao trainerDao;
+    @Mock private TraineeDao traineeDao;
+    @Mock private TrainerDao trainerDao;
+    @Mock private MeterRegistry meterRegistry;
+    @Mock private CredentialsService credentialsService;
+    @Mock private Counter counter;
 
     @InjectMocks
     private TraineeServiceImpl service;
-
 
     private static User user(String first, String last, String uname, String pwd, boolean active) {
         User u = new User();
@@ -52,11 +57,17 @@ class TraineeServiceImplTest {
         return tr;
     }
 
+    private void setupMeterRegistryMocks() {
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(counter);
+        doNothing().when(counter).increment();
+    }
+
     @Test
     @DisplayName("create() generates unique username & password then persists")
     void create_generatesCredentialsAndPersists() {
-        when(trainerDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainer check
-        when(traineeDao.findByUsername("John.Smith")).thenReturn(Optional.empty()); // Mock for username generation
+        setupMeterRegistryMocks();
+        when(trainerDao.findAll()).thenReturn(Collections.emptyList());
+        when(traineeDao.findByUsername("John.Smith")).thenReturn(Optional.empty());
 
         Trainee toSave = trainee(0, "John", "Smith", null, null);
 
@@ -66,14 +77,16 @@ class TraineeServiceImplTest {
         assertNotNull(result.getUser().getPassword());
         assertEquals(10, result.getUser().getPassword().length());
         verify(traineeDao).create(result);
+        verify(meterRegistry).counter("gym.users.created", "type", "trainee");
     }
 
     @Test
     @DisplayName("create() resolves username collision by suffixing")
     void create_resolvesUsernameCollision() {
-        when(trainerDao.findAll()).thenReturn(Collections.emptyList()); // Mock for the trainer check
-        when(traineeDao.findByUsername("John.Smith")).thenReturn(Optional.of(new Trainee())); // Mock collision
-        when(traineeDao.findByUsername("John.Smith.1")).thenReturn(Optional.empty()); // Mock available username
+        setupMeterRegistryMocks();
+        when(trainerDao.findAll()).thenReturn(Collections.emptyList());
+        when(traineeDao.findByUsername("John.Smith")).thenReturn(Optional.of(new Trainee()));
+        when(traineeDao.findByUsername("John.Smith.1")).thenReturn(Optional.empty());
 
         Trainee toSave = trainee(0, "John", "Smith", null, null);
 
@@ -81,6 +94,7 @@ class TraineeServiceImplTest {
 
         assertEquals("John.Smith.1", toSave.getUser().getUsername());
         verify(traineeDao).create(toSave);
+        verify(meterRegistry).counter("gym.users.created", "type", "trainee");
     }
 
     @Test
@@ -109,6 +123,7 @@ class TraineeServiceImplTest {
         @Test
         @DisplayName("update() forwards to DAO when entity exists")
         void succeedsWhenFound() {
+            setupMeterRegistryMocks();
             Trainee existing = trainee(1, "Ann", "Lee", "Ann.Lee", "pwd");
             when(traineeDao.findById(1L)).thenReturn(Optional.of(existing));
 
@@ -117,6 +132,7 @@ class TraineeServiceImplTest {
 
             assertSame(modified, out);
             verify(traineeDao).update(modified);
+            verify(meterRegistry).counter("gym.users.updated", "type", "trainee");
         }
 
         @Test
@@ -129,13 +145,14 @@ class TraineeServiceImplTest {
         }
     }
 
-
     @Test
     @DisplayName("delete() removes record when present")
     void delete_removesWhenFound() {
+        setupMeterRegistryMocks();
         when(traineeDao.findById(5L)).thenReturn(Optional.of(trainee(5, "A", "B", "A.B", "pwd")));
         service.delete(5L);
         verify(traineeDao).delete(5L);
+        verify(meterRegistry).counter("gym.users.deleted", "type", "trainee");
     }
 
     @Test
@@ -149,11 +166,13 @@ class TraineeServiceImplTest {
     @Test
     @DisplayName("deleteByUsername() cascades to delete(id)")
     void deleteByUsername_deletesViaId() {
+        setupMeterRegistryMocks();
         Trainee t = trainee(7, "Z", "Q", "Z.Q", "pwd");
         when(traineeDao.findByUsername("Z.Q")).thenReturn(Optional.of(t));
         when(traineeDao.findById(7L)).thenReturn(Optional.of(t));
         service.deleteByUsername("Z.Q");
         verify(traineeDao).delete(7L);
+        verify(meterRegistry).counter("gym.users.deleted", "type", "trainee");
     }
 
     @Test
@@ -164,7 +183,6 @@ class TraineeServiceImplTest {
                 () -> service.deleteByUsername("none"));
     }
 
-
     @Nested
     class CheckCredentials {
 
@@ -173,7 +191,10 @@ class TraineeServiceImplTest {
         void credentialsMatch() {
             Trainee t = trainee(3, "A", "B", "A.B", "secret");
             when(traineeDao.findByUsername("A.B")).thenReturn(Optional.of(t));
+            when(credentialsService.checkCredentials(t.getUser(), "secret")).thenReturn(true);
+
             assertTrue(service.checkCredentials("A.B", "secret"));
+            verify(credentialsService).checkCredentials(t.getUser(), "secret");
         }
 
         @Test
@@ -181,15 +202,17 @@ class TraineeServiceImplTest {
         void credentialsDontMatch() {
             Trainee t = trainee(3, "A", "B", "A.B", "secret");
             when(traineeDao.findByUsername("A.B")).thenReturn(Optional.of(t));
+            when(credentialsService.checkCredentials(t.getUser(), "oops")).thenReturn(false);
+
             assertFalse(service.checkCredentials("A.B", "oops"));
+
             when(traineeDao.findByUsername("missing")).thenReturn(Optional.empty());
             assertFalse(service.checkCredentials("missing", "any"));
         }
     }
 
-
     @Test
-    @DisplayName("changePassword() updates the user’s password")
+    @DisplayName("changePassword() updates the user's password")
     void changePassword_updatesField() {
         Trainee t = trainee(4, "P", "Q", "P.Q", "old");
         when(traineeDao.findByUsername("P.Q")).thenReturn(Optional.of(t));
@@ -207,10 +230,10 @@ class TraineeServiceImplTest {
                 () -> service.changePassword("ghost", "x"));
     }
 
-
     @Test
     @DisplayName("activateTrainee() flips active flag")
     void activate_flipsFlag() {
+        setupMeterRegistryMocks();
         Trainee t = trainee(6, "M", "N", "M.N", "pwd");
         t.getUser().setActive(false);
         when(traineeDao.findByUsername("M.N")).thenReturn(Optional.of(t));
@@ -218,15 +241,16 @@ class TraineeServiceImplTest {
         service.activateTrainee("M.N", true);
 
         assertTrue(t.getUser().isActive());
+        verify(meterRegistry).counter("gym.users.activation.change", "type", "trainee", "status", "true");
     }
-
 
     @Nested
     class UpdateTrainers {
 
         @Test
-        @DisplayName("updateTrainers() replaces trainee’s trainer set")
+        @DisplayName("updateTrainers() replaces trainee's trainer set")
         void updatesTrainerList() {
+            setupMeterRegistryMocks();
             Trainee t = trainee(10, "Stu", "Dent", "Stu.Dent", "pwd");
             when(traineeDao.findByUsername("Stu.Dent")).thenReturn(Optional.of(t));
 
@@ -240,6 +264,7 @@ class TraineeServiceImplTest {
                     List.of("Coach.One", "Coach.Two"));
 
             assertEquals(Set.of(tr1, tr2), result.getTrainers());
+            verify(meterRegistry).counter("gym.trainee.trainers.updated", "trainee", "Stu.Dent");
         }
 
         @Test
@@ -253,7 +278,6 @@ class TraineeServiceImplTest {
                     () -> service.updateTrainers("Stu.Dent", List.of("Missing")));
         }
     }
-
 
     @Test
     void findById_delegates() {
