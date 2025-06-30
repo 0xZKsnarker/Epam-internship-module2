@@ -2,11 +2,11 @@ package com.epam.service;
 
 import com.epam.dao.TraineeDao;
 import com.epam.dao.TrainerDao;
-import com.epam.domain.Trainee;
 import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +23,19 @@ public class TrainerServiceImpl implements TrainerService {
     private static final Logger log = LoggerFactory.getLogger(TrainerServiceImpl.class);
     private TrainerDao trainerDao;
     private TraineeDao traineeDao;
+    private MeterRegistry meterRegistry;
 
     @Autowired
     public void setTrainerDao(TrainerDao trainerDao) {
         this.trainerDao = trainerDao;
     }
     @Autowired
-    public void setTrainerDao(TraineeDao traineeDao) {
+    public void setTraineeDao(TraineeDao traineeDao) {
         this.traineeDao = traineeDao;
+    }
+    @Autowired
+    public void setMeterRegistry(MeterRegistry meterRegistry){
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -55,6 +60,7 @@ public class TrainerServiceImpl implements TrainerService {
         trainer.setUser(user);
 
         trainerDao.create(trainer);
+        meterRegistry.counter("gym.users.created", "type", "trainer").increment();
 
         log.info("Created trainer with username {}", user.getUsername());
 
@@ -68,6 +74,7 @@ public class TrainerServiceImpl implements TrainerService {
             throw new ResourceNotFoundException("Trainer with ID " + trainer.getId() + " not found for update.");
         }
         trainerDao.update(trainer);
+        meterRegistry.counter("gym.users.updated", "type", "trainer").increment();
         log.info("Updated trainer id={}", trainer.getId());
         return trainer;
     }
@@ -110,6 +117,7 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer trainer = trainerDao.findByUsername(username).orElseThrow(() ->
                 new ResourceNotFoundException("Trainer " + username + " not found for password change."));
         trainer.getUser().setPassword(newPassword);
+        trainerDao.update(trainer);
         log.info("Changed password for trainer {}", username);
     }
 
@@ -118,6 +126,8 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer trainer = trainerDao.findByUsername(username).orElseThrow(() ->
                 new ResourceNotFoundException("Trainer " + username + " not found for activation/deactivation."));
         trainer.getUser().setActive(isActive);
+        trainerDao.update(trainer);
+        meterRegistry.counter("gym.users.activation.change", "type", "trainer", "status", String.valueOf(isActive)).increment();
         log.info("Set active status to {} for trainer {}", isActive, username);
     }
 
@@ -134,3 +144,4 @@ public class TrainerServiceImpl implements TrainerService {
         return trainerDao.findByUsername(username).isPresent();
     }
 }
+

@@ -7,6 +7,7 @@ import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
+import io.micrometer.core.instrument.MeterRegistry;  
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,20 +24,18 @@ import java.util.Set;
 public class TraineeServiceImpl implements TraineeService {
 
     private static final Logger log = LoggerFactory.getLogger(TraineeServiceImpl.class);
-
     private TraineeDao traineeDao;
     private TrainerDao trainerDao;
+    private MeterRegistry meterRegistry;
+
 
     @Autowired
-    public void setTraineeDao(TraineeDao traineeDao) {
+    public TraineeServiceImpl(TraineeDao traineeDao, TrainerDao trainerDao, MeterRegistry meterRegistry) {
         this.traineeDao = traineeDao;
-    }
-
-    @Autowired
-    public void setTrainerDao(TrainerDao trainerDao) {
         this.trainerDao = trainerDao;
+        this.meterRegistry = meterRegistry;
     }
-
+    
     @Override
     public Trainee create(Trainee trainee) {
         log.info("Creating trainee");
@@ -58,6 +57,7 @@ public class TraineeServiceImpl implements TraineeService {
         trainee.setUser(user);
 
         traineeDao.create(trainee);
+        meterRegistry.counter("gym.users.created", "type", "trainee").increment();  
 
         log.info("Created trainee with username {}", user.getUsername());
 
@@ -72,6 +72,7 @@ public class TraineeServiceImpl implements TraineeService {
             throw new ResourceNotFoundException("Trainee with ID " + trainee.getId() + " not found for update.");
         }
         traineeDao.update(trainee);
+        meterRegistry.counter("gym.users.updated", "type", "trainee").increment();  
         log.info("Updated trainee id={}", trainee.getId());
         return trainee;
     }
@@ -81,6 +82,7 @@ public class TraineeServiceImpl implements TraineeService {
         traineeDao.findById(id).orElseThrow(() ->
                 new ResourceNotFoundException("Trainee with ID " + id + " not found for deletion."));
         traineeDao.delete(id);
+        meterRegistry.counter("gym.users.deleted", "type", "trainee").increment();  
         log.info("Deleted trainee id={}", id);
     }
 
@@ -124,6 +126,7 @@ public class TraineeServiceImpl implements TraineeService {
         Trainee trainee = traineeDao.findByUsername(username).orElseThrow(() ->
                 new ResourceNotFoundException("Trainee " + username + " not found for password change."));
         trainee.getUser().setPassword(newPassword);
+        traineeDao.update(trainee);
         log.info("Changed password for trainee {}", username);
     }
 
@@ -132,6 +135,8 @@ public class TraineeServiceImpl implements TraineeService {
         Trainee trainee = traineeDao.findByUsername(username).orElseThrow(() ->
                 new ResourceNotFoundException("Trainee " + username + " not found for activation/deactivation."));
         trainee.getUser().setActive(isActive);
+        traineeDao.update(trainee);
+        meterRegistry.counter("gym.users.activation.change", "type", "trainee", "status", String.valueOf(isActive)).increment();  
         log.info("Set active status to {} for trainee {}", isActive, username);
     }
 
@@ -148,11 +153,12 @@ public class TraineeServiceImpl implements TraineeService {
         }
 
         trainee.setTrainers(newTrainers);
+        traineeDao.update(trainee);
+        meterRegistry.counter("gym.trainee.trainers.updated", "trainee", traineeUsername).increment();
         log.info("Updated trainer list for trainee {}", traineeUsername);
         return trainee;
     }
 
-    //helper method to check if a username exists
     private boolean UsernameExists(String username) {
         return traineeDao.findByUsername(username).isPresent();
     }

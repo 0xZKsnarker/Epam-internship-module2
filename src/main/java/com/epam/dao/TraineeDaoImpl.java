@@ -1,7 +1,6 @@
 package com.epam.dao;
 
 import com.epam.domain.Trainee;
-import com.epam.exception.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
