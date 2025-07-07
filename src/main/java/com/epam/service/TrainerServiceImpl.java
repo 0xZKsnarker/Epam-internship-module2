@@ -6,11 +6,11 @@ import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
-import com.epam.utils.CredentialsService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,23 +25,16 @@ public class TrainerServiceImpl implements TrainerService {
     private TrainerDao trainerDao;
     private TraineeDao traineeDao;
     private MeterRegistry meterRegistry;
-    private CredentialsService credentialsService;
+    private PasswordEncoder passwordEncoder;
+
     @Autowired
-    public void setTrainerDao(TrainerDao trainerDao) {
+    public TrainerServiceImpl(TrainerDao trainerDao, TraineeDao traineeDao, MeterRegistry meterRegistry, PasswordEncoder passwordEncoder) {
         this.trainerDao = trainerDao;
-    }
-    @Autowired
-    public void setTraineeDao(TraineeDao traineeDao) {
         this.traineeDao = traineeDao;
-    }
-    @Autowired
-    public void setMeterRegistry(MeterRegistry meterRegistry){
         this.meterRegistry = meterRegistry;
+        this.passwordEncoder = passwordEncoder;
     }
-    @Autowired
-    public void setCredentialsService(CredentialsService credentialsService){
-        this.credentialsService = credentialsService;
-    }
+
 
     @Override
     @Transactional
@@ -59,7 +52,7 @@ public class TrainerServiceImpl implements TrainerService {
         }
 
         String password = AuthUtils.randomPassword(10);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password));
         user.setActive(true);
         user.setUsername(AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists));
         trainer.setUser(user);
@@ -107,21 +100,13 @@ public class TrainerServiceImpl implements TrainerService {
         return trainerDao.findByUsername(username);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean checkCredentials(String username, String password) {
-        Optional<Trainer> optionalTrainer = trainerDao.findByUsername(username);
-        if (optionalTrainer.isPresent()) {
-            return credentialsService.checkCredentials(optionalTrainer.get().getUser(), password);
-        }
-        return false;
-    }
+
 
     @Override
     public void changePassword(String username, String newPassword) {
         Trainer trainer = trainerDao.findByUsername(username).orElseThrow(() ->
                 new ResourceNotFoundException("Trainer " + username + " not found for password change."));
-        trainer.getUser().setPassword(newPassword);
+        trainer.getUser().setPassword(passwordEncoder.encode(newPassword));
         trainerDao.update(trainer);
         log.info("Changed password for trainer {}", username);
     }

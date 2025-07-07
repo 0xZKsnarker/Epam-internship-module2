@@ -7,14 +7,13 @@ import com.epam.domain.Trainer;
 import com.epam.domain.User;
 import com.epam.exception.ResourceNotFoundException;
 import com.epam.utils.AuthUtils;
-import com.epam.utils.CredentialsService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -28,15 +27,14 @@ public class TraineeServiceImpl implements TraineeService {
     private TraineeDao traineeDao;
     private TrainerDao trainerDao;
     private MeterRegistry meterRegistry;
-    private CredentialsService credentialsService;
-
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
-    public TraineeServiceImpl(TraineeDao traineeDao, TrainerDao trainerDao, MeterRegistry meterRegistry, CredentialsService credentialsService) {
+    public TraineeServiceImpl(TraineeDao traineeDao, TrainerDao trainerDao, MeterRegistry meterRegistry, PasswordEncoder passwordEncoder) {
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.meterRegistry = meterRegistry;
-        this.credentialsService = credentialsService;
+        this.passwordEncoder = passwordEncoder;
     }
     
     @Override
@@ -54,7 +52,7 @@ public class TraineeServiceImpl implements TraineeService {
         }
 
         String password = AuthUtils.randomPassword(10);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password));
         user.setActive(true);
         user.setUsername(AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists));
         trainee.setUser(user);
@@ -114,21 +112,12 @@ public class TraineeServiceImpl implements TraineeService {
         return traineeDao.findByUsername(username);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean checkCredentials(String username, String password) {
-        Optional<Trainee> optionalTrainee = traineeDao.findByUsername(username);
-        if (optionalTrainee.isPresent()) {
-            return credentialsService.checkCredentials(optionalTrainee.get().getUser(), password);
-        }
-        return false;
-    }
 
     @Override
     public void changePassword(String username, String newPassword) {
         Trainee trainee = traineeDao.findByUsername(username).orElseThrow(() ->
                 new ResourceNotFoundException("Trainee " + username + " not found for password change."));
-        trainee.getUser().setPassword(newPassword);
+        trainee.getUser().setPassword(passwordEncoder.encode(newPassword));
         traineeDao.update(trainee);
         log.info("Changed password for trainee {}", username);
     }

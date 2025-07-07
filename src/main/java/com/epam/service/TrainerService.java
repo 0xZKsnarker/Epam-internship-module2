@@ -11,7 +11,6 @@ public interface TrainerService {
     Optional<Trainer> findById(Long id);
     List<Trainer>     findAll();
     Optional<Trainer> findByUsername(String username);
-    boolean checkCredentials(String username, String password);
     void changePassword(String username, String newPassword);
     void activateTrainer(String username, boolean isActive);
     List<Trainer> getUnassignedTrainers(String traineeUsername);

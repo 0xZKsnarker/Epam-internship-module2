@@ -14,7 +14,6 @@ public interface TraineeService {
     List<Trainee> findAll();
     Optional<Trainee> findByUsername(String username);
     void deleteByUsername(String username);
-    boolean checkCredentials(String username, String password);
     void changePassword(String username, String newPassword);
     void activateTrainee(String username, boolean isActive);
     Trainee updateTrainers(String traineeUsername, List<String> trainerUsernames);

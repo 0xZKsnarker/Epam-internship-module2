@@ -7,6 +7,7 @@ import com.epam.dto.trainer.TrainerRegistrationRequest;
 import com.epam.dto.trainer.UpdateTrainerProfileRequest;
 import com.epam.dto.user.UpdateActivationStatusRequest;
 import com.epam.facade.GymFacade;
+import com.epam.security.Jwtutil;
 import com.epam.service.TrainerService;
 import com.epam.service.TrainingTypeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,9 +15,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
@@ -28,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TrainerController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class TrainerControllerTest {
 
     @Autowired
@@ -38,13 +42,17 @@ class TrainerControllerTest {
 
     @MockBean
     private GymFacade gymFacade;
+    @MockBean
+    private UserDetailsService userDetailsService;
+    @MockBean
+    private Jwtutil jwtUtil;
 
     private TrainerService trainerService;
     private TrainingTypeService trainingTypeService;
 
     @BeforeEach
     void setUp() {
-        trainerService      = Mockito.mock(TrainerService.class);
+        trainerService = Mockito.mock(TrainerService.class);
         trainingTypeService = Mockito.mock(TrainingTypeService.class);
 
         when(gymFacade.trainers()).thenReturn(trainerService);
@@ -58,18 +66,11 @@ class TrainerControllerTest {
         body.setLastName("Doe");
         body.setSpecializationId(1L);
 
-        TrainingType spec = new TrainingType();
-        when(trainingTypeService.findById(1L)).thenReturn(Optional.of(spec));
+        when(trainingTypeService.findById(1L)).thenReturn(Optional.of(new TrainingType()));
 
-        User user = new User();
-        user.setUsername("Jane.Doe");
-        user.setPassword("pwd");
-
-        Trainer trainer = new Trainer();
-        trainer.setUser(user);
-        trainer.setSpecialization(spec);
-
-        when(trainerService.create(any(Trainer.class))).thenReturn(trainer);
+        Trainer createdTrainer = new Trainer();
+        createdTrainer.setUser(new User("Jane", "Doe", "Jane.Doe", "pwd", true));
+        when(trainerService.create(any(Trainer.class))).thenReturn(createdTrainer);
 
         mockMvc.perform(post("/api/trainers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,17 +80,9 @@ class TrainerControllerTest {
 
     @Test
     void getTrainer_shouldReturnOk() throws Exception {
-        User user = new User();
-        user.setFirstName("Jane");
-        user.setLastName("Doe");
-        user.setActive(true);
-
-        TrainingType spec = new TrainingType();
-        spec.setName("Yoga");
-
         Trainer trainer = new Trainer();
-        trainer.setUser(user);
-        trainer.setSpecialization(spec);
+        trainer.setUser(new User("Jane", "Doe", "Jane.Doe", "pwd", true));
+        trainer.setSpecialization(new TrainingType("Yoga"));
 
         when(trainerService.findByUsername("Jane.Doe")).thenReturn(Optional.of(trainer));
 
@@ -100,23 +93,17 @@ class TrainerControllerTest {
     @Test
     void updateTrainerProfile_shouldReturnOk() throws Exception {
         UpdateTrainerProfileRequest body = new UpdateTrainerProfileRequest();
-        body.setUsername("Jane.Doe");      // satisfies @NotBlank in DTO
+        body.setUsername("Jane.Doe");
         body.setFirstName("Jane");
         body.setLastName("Doe");
         body.setActive(true);
 
         Trainer existing = new Trainer();
         existing.setUser(new User());
-        existing.setSpecialization(new TrainingType());
 
         Trainer updated = new Trainer();
-        updated.setUser(new User());
-        updated.getUser().setFirstName(body.getFirstName());
-        updated.getUser().setLastName(body.getLastName());
-        updated.getUser().setActive(body.isActive());
-        TrainingType spec = new TrainingType();
-        spec.setName("Yoga");
-        updated.setSpecialization(spec);
+        updated.setUser(new User("Jane", "Doe", "Jane.Doe", "pwd", true));
+        updated.setSpecialization(new TrainingType("Yoga"));
 
         when(trainerService.findByUsername("Jane.Doe")).thenReturn(Optional.of(existing));
         when(trainerService.update(any(Trainer.class))).thenReturn(updated);

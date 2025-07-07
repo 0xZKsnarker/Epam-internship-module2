@@ -7,28 +7,31 @@ import com.epam.dto.trainee.UpdateTraineeProfileRequest;
 import com.epam.dto.trainee.UpdateTraineeTrainersRequest;
 import com.epam.dto.user.UpdateActivationStatusRequest;
 import com.epam.facade.GymFacade;
+import com.epam.security.Jwtutil;
 import com.epam.service.TraineeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TraineeController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class TraineeControllerTest {
 
     @Autowired
@@ -39,6 +42,11 @@ class TraineeControllerTest {
 
     @MockBean
     private GymFacade gymFacade;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
+    @MockBean
+    private Jwtutil jwtUtil;
 
     private TraineeService traineeService;
 
@@ -53,17 +61,10 @@ class TraineeControllerTest {
         TraineeRegistrationRequest body = new TraineeRegistrationRequest();
         body.setFirstName("John");
         body.setLastName("Doe");
-        body.setDateOfBirth(LocalDate.of(2000, 1, 1));
-        body.setAddress("123 Main St");
 
-        User user = new User();
-        user.setUsername("John.Doe");
-        user.setPassword("pwd");
-
-        Trainee trainee = new Trainee();
-        trainee.setUser(user);
-
-        when(traineeService.create(any(Trainee.class))).thenReturn(trainee);
+        Trainee createdTrainee = new Trainee();
+        createdTrainee.setUser(new User("John", "Doe", "John.Doe", "pwd", true));
+        when(traineeService.create(any(Trainee.class))).thenReturn(createdTrainee);
 
         mockMvc.perform(post("/api/trainees")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,16 +74,8 @@ class TraineeControllerTest {
 
     @Test
     void getTrainee_shouldReturnOk() throws Exception {
-        User user = new User();
-        user.setFirstName("John");
-        user.setLastName("Doe");
-        user.setActive(true);
-
         Trainee trainee = new Trainee();
-        trainee.setUser(user);
-        trainee.setAddress("123 Main St");
-        trainee.setDateOfBirth(LocalDate.of(2000, 1, 1));
-
+        trainee.setUser(new User("John", "Doe", "John.Doe", "pwd", true));
         when(traineeService.findByUsername("John.Doe")).thenReturn(Optional.of(trainee));
 
         mockMvc.perform(get("/api/trainees/{username}", "John.Doe"))
@@ -95,23 +88,15 @@ class TraineeControllerTest {
         body.setUsername("John.Doe");
         body.setFirstName("John");
         body.setLastName("Doe");
-        body.setDateOfBirth(LocalDate.of(2000, 1, 1));
-        body.setAddress("456 Market St");
         body.setActive(true);
 
         Trainee existing = new Trainee();
         existing.setUser(new User());
-
-        Trainee updated = new Trainee();
-        updated.setUser(new User());
-        updated.getUser().setFirstName(body.getFirstName());
-        updated.getUser().setLastName(body.getLastName());
-        updated.getUser().setActive(body.isActive());
-        updated.setAddress(body.getAddress());
-        updated.setDateOfBirth(body.getDateOfBirth());
-
         when(traineeService.findByUsername("John.Doe")).thenReturn(Optional.of(existing));
-        when(traineeService.update(any(Trainee.class))).thenReturn(updated);
+
+        Trainee updatedTraineeWithUser = new Trainee();
+        updatedTraineeWithUser.setUser(new User());
+        when(traineeService.update(any(Trainee.class))).thenReturn(updatedTraineeWithUser);
 
         mockMvc.perform(put("/api/trainees/{username}", "John.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +117,6 @@ class TraineeControllerTest {
         UpdateActivationStatusRequest body = new UpdateActivationStatusRequest();
         body.setUsername("John.Doe");
         body.setActive(true);
-
         doNothing().when(traineeService).activateTrainee("John.Doe", true);
 
         mockMvc.perform(patch("/api/trainees/{username}/activation", "John.Doe")
@@ -143,10 +127,11 @@ class TraineeControllerTest {
 
     @Test
     void updateTraineeTrainers_shouldReturnOk() throws Exception {
-        List<String> trainers = List.of("trainer1", "trainer2");
-        UpdateTraineeTrainersRequest body = new UpdateTraineeTrainersRequest("John.Doe", trainers);
+        UpdateTraineeTrainersRequest body = new UpdateTraineeTrainersRequest();
+        body.setTraineeUsername("John.Doe");
+        body.setTrainers(List.of("trainer1"));
 
-        when(traineeService.updateTrainers("John.Doe", trainers)).thenReturn(new Trainee());
+        when(traineeService.updateTrainers(anyString(), anyList())).thenReturn(new Trainee());
 
         mockMvc.perform(put("/api/trainees/{username}/trainers", "John.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
