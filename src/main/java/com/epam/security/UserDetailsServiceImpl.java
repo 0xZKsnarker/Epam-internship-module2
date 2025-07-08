@@ -28,7 +28,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new RuntimeException("Blocked for too many attempts");
         }
 
-        // CORRECTED: Declare the variable with the correct type: com.epam.domain.User
+
         com.epam.domain.User domainUser = traineeDao.findByUsername(username)
                 .map(t -> t.getUser())
                 .orElseGet(() ->
@@ -37,7 +37,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username))
                 );
 
-        // Now, use the 'domainUser' object to build and return the Spring Security User.
+
         return new org.springframework.security.core.userdetails.User(
                 domainUser.getUsername(),
                 domainUser.getPassword(),
