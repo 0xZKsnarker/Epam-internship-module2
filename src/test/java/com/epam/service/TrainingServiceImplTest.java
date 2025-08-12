@@ -1,5 +1,6 @@
 package com.epam.service;
 
+import com.epam.client.WorkloadServiceClient;
 import com.epam.dao.TrainingDao;
 import com.epam.dao.TrainingTypeDao;
 import com.epam.domain.Training;
@@ -26,8 +27,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TrainingServiceImplTest {
 
-    @Mock  private TrainingDao trainingDao;
-    @Mock  private TrainingTypeDao trainingTypeDao;
+    @Mock
+    private TrainingDao trainingDao;
+    @Mock
+    private TrainingTypeDao trainingTypeDao;
+    @Mock
+    private WorkloadServiceClient workloadServiceClient;
 
     @InjectMocks
     private TrainingServiceImpl service;
@@ -36,7 +41,7 @@ class TrainingServiceImplTest {
     void setUp() {
         MeterRegistry realMeterRegistry = new SimpleMeterRegistry();
 
-        service = new TrainingServiceImpl(trainingDao, trainingTypeDao, realMeterRegistry);
+        service = new TrainingServiceImpl(trainingDao, trainingTypeDao, realMeterRegistry, workloadServiceClient);
     }
 
     private static Training training(long id, String name) {

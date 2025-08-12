@@ -1,9 +1,11 @@
 package com.epam.service;
 
+import com.epam.client.WorkloadServiceClient;
 import com.epam.dao.TrainingTypeDao;
 import com.epam.domain.Training;
 import com.epam.dao.TrainingDao;
 import com.epam.domain.TrainingType;
+import com.epam.dto.client.WorkloadRequest;
 import com.epam.exception.ResourceNotFoundException;
 import io.micrometer.core.instrument.MeterRegistry; 
 import io.micrometer.core.instrument.Timer; 
@@ -11,6 +13,7 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
@@ -24,12 +27,14 @@ public class TrainingServiceImpl implements TrainingService {
     private TrainingDao trainingDao;
     private TrainingTypeDao trainingTypeDao;
     private MeterRegistry meterRegistry;
+    private WorkloadServiceClient workloadServiceClient;
 
     @Autowired
-    public TrainingServiceImpl(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao, MeterRegistry meterRegistry) {
+    public TrainingServiceImpl(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao, MeterRegistry meterRegistry, @Qualifier("com.epam.client.WorkloadServiceClient") WorkloadServiceClient workloadServiceClient) {
         this.trainingDao = trainingDao;
         this.trainingTypeDao = trainingTypeDao;
         this.meterRegistry = meterRegistry;
+        this.workloadServiceClient = workloadServiceClient;
     }
 
     @Override
@@ -39,6 +44,8 @@ public class TrainingServiceImpl implements TrainingService {
         meterRegistry.counter("gym.trainings.created", "type", training.getTrainingType().getName()).increment(); 
         log.info("Scheduled training {} (id={})",
                 training.getTrainingName(), training.getId());
+
+        sendWorkloadUpdate(training, "ADD");
         return training;
     }
 
@@ -92,4 +99,18 @@ public class TrainingServiceImpl implements TrainingService {
             sample.stop(meterRegistry.timer("gym.trainings.searches", "search_type", "trainer")); 
         }
     }
+
+    private void sendWorkloadUpdate(Training training, String actionType) {
+        WorkloadRequest request = WorkloadRequest.builder()
+                .trainerUsername(training.getTrainer().getUser().getUsername())
+                .trainerFirstName(training.getTrainer().getUser().getFirstName())
+                .trainerLastName(training.getTrainer().getUser().getLastName())
+                .isActive(training.getTrainer().getUser().isActive())
+                .trainingDate(training.getTrainingDate())
+                .trainingDuration(training.getTrainingDuration())
+                .actionType(actionType)
+                .build();
+        workloadServiceClient.updateWorkload(request);
+    }
+
 }
