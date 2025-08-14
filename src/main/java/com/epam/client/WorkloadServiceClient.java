@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-// The 'name' must match the 'spring.application.name' of the microservice
 @FeignClient(name = "trainer-workload-service", fallback = WorkloadServiceClient.WorkloadServiceFallback.class)
 public interface WorkloadServiceClient {
 

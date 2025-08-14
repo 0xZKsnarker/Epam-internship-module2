@@ -51,10 +51,12 @@ public class TrainerServiceImpl implements TrainerService {
             throw new IllegalStateException("A user with name " + user.getFirstName() + " " + user.getLastName() + " already exists as a Trainee.");
         }
 
-        String password = AuthUtils.randomPassword(10);
-        user.setPassword(passwordEncoder.encode(password));
+        String rawPassword = AuthUtils.randomPassword(10);  // Keep the raw password
+        String generatedUsername = AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists);
+
+        user.setPassword(passwordEncoder.encode(rawPassword));
         user.setActive(true);
-        user.setUsername(AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists));
+        user.setUsername(generatedUsername);
         trainer.setUser(user);
 
         trainerDao.create(trainer);
@@ -62,9 +64,21 @@ public class TrainerServiceImpl implements TrainerService {
 
         log.info("Created trainer with username {}", user.getUsername());
 
-        trainer.getUser().setPassword(password);
-        return trainer;
+        // Create a detached User object with raw password for response
+        User responseUser = new User();
+        responseUser.setUsername(generatedUsername);
+        responseUser.setPassword(rawPassword);  // Raw password for response
+        responseUser.setFirstName(user.getFirstName());
+        responseUser.setLastName(user.getLastName());
+
+        Trainer responseTrainer = new Trainer();
+        responseTrainer.setUser(responseUser);
+        responseTrainer.setId(trainer.getId());
+        responseTrainer.setSpecialization(trainer.getSpecialization());
+
+        return responseTrainer;
     }
+
     @Override
     public Trainer update(Trainer trainer) {
         Optional<Trainer> existingTrainer = trainerDao.findById(trainer.getId());

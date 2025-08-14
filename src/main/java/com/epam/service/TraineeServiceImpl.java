@@ -36,7 +36,7 @@ public class TraineeServiceImpl implements TraineeService {
         this.meterRegistry = meterRegistry;
         this.passwordEncoder = passwordEncoder;
     }
-    
+
     @Override
     public Trainee create(Trainee trainee) {
         log.info("Creating trainee");
@@ -51,19 +51,31 @@ public class TraineeServiceImpl implements TraineeService {
             throw new IllegalStateException("A user with name " + user.getFirstName() + " " + user.getLastName() + " already exists as a Trainer.");
         }
 
-        String password = AuthUtils.randomPassword(10);
-        user.setPassword(passwordEncoder.encode(password));
+        String rawPassword = AuthUtils.randomPassword(10);  // Keep the raw password
+        String generatedUsername = AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists);
+
+        user.setPassword(passwordEncoder.encode(rawPassword));
         user.setActive(true);
-        user.setUsername(AuthUtils.generateUsername(user.getFirstName(), user.getLastName(), this::UsernameExists));
+        user.setUsername(generatedUsername);
         trainee.setUser(user);
 
         traineeDao.create(trainee);
-        meterRegistry.counter("gym.users.created", "type", "trainee").increment();  
+        meterRegistry.counter("gym.users.created", "type", "trainee").increment();
 
         log.info("Created trainee with username {}", user.getUsername());
 
-        trainee.getUser().setPassword(password);
-        return trainee;
+        // Create a detached User object with raw password for response
+        User responseUser = new User();
+        responseUser.setUsername(generatedUsername);
+        responseUser.setPassword(rawPassword);  // Raw password for response
+        responseUser.setFirstName(user.getFirstName());
+        responseUser.setLastName(user.getLastName());
+
+        Trainee responseTrainee = new Trainee();
+        responseTrainee.setUser(responseUser);
+        responseTrainee.setId(trainee.getId());
+
+        return responseTrainee;
     }
 
     @Override
