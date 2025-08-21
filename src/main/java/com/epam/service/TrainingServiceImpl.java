@@ -7,13 +7,15 @@ import com.epam.dao.TrainingDao;
 import com.epam.domain.TrainingType;
 import com.epam.dto.client.WorkloadRequest;
 import com.epam.exception.ResourceNotFoundException;
-import io.micrometer.core.instrument.MeterRegistry; 
+import com.epam.messaging.WorkloadMessageProducer;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer; 
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
@@ -24,17 +26,22 @@ public class TrainingServiceImpl implements TrainingService {
 
     private static final Logger log = LoggerFactory.getLogger(TrainingServiceImpl.class);
 
+    @Value("${messaging.use-queue:false}")
+    private boolean useMessageQueue;
+
     private TrainingDao trainingDao;
     private TrainingTypeDao trainingTypeDao;
     private MeterRegistry meterRegistry;
     private WorkloadServiceClient workloadServiceClient;
+    private WorkloadMessageProducer workloadMessageProducer;
 
     @Autowired
-    public TrainingServiceImpl(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao, MeterRegistry meterRegistry, @Qualifier("com.epam.client.WorkloadServiceClient") WorkloadServiceClient workloadServiceClient) {
+    public TrainingServiceImpl(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao, MeterRegistry meterRegistry, @Qualifier("com.epam.client.WorkloadServiceClient") WorkloadServiceClient workloadServiceClient, WorkloadMessageProducer workloadMessageProducer) {
         this.trainingDao = trainingDao;
         this.trainingTypeDao = trainingTypeDao;
         this.meterRegistry = meterRegistry;
         this.workloadServiceClient = workloadServiceClient;
+        this.workloadMessageProducer = workloadMessageProducer;
     }
 
     @Override
@@ -110,7 +117,15 @@ public class TrainingServiceImpl implements TrainingService {
                 .trainingDuration(training.getTrainingDuration())
                 .actionType(actionType)
                 .build();
-        workloadServiceClient.updateWorkload(request);
-    }
+
+        if (useMessageQueue && workloadMessageProducer != null) {
+            log.info("Sending workload update via ActiveMQ");
+            workloadMessageProducer.sendWorkloadUpdate(request);
+        } else {
+            log.info("Sending workload update via REST");
+            workloadServiceClient.updateWorkload(request);
+        }
+
+   }
 
 }
