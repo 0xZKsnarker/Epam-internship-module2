@@ -11,11 +11,11 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-import static io.restassured.RestAssured.*;
+import static io.restassured.RestAssured.baseURI;
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TrainerSteps {
@@ -49,7 +49,7 @@ public class TrainerSteps {
 
     @When("I register a new trainer with:")
     public void iRegisterANewTrainerWith(DataTable table) {
-        Map<String, Object> body = table.asMap(String.class, Object.class);
+        Map<String, String> body = table.asMaps().get(0);
 
         Response response = reqAuthJson()
                 .body(body)
@@ -75,5 +75,16 @@ public class TrainerSteps {
                 .anyMatch(t -> t.getUser() != null
                         && username.equals(t.getUser().getUsername()));
         assertThat(exists).as("Trainer must pre-exist for this scenario").isTrue();
+    }
+
+    @And("the response should contain field {string} with value {string}")
+    public void theResponseShouldContainFieldWithValue(String field, String value) {
+        testContext.getResponse().then().body(field, org.hamcrest.Matchers.equalTo(value));
+    }
+
+    @And("the trainer should be created with username pattern {string}")
+    public void theTrainerShouldBeCreatedWithUsernamePattern(String pattern) {
+        String username = testContext.getResponse().jsonPath().getString("username");
+        assertThat(username).matches(pattern);
     }
 }

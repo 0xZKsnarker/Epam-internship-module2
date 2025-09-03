@@ -15,7 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.Duration;
 
 @CucumberContextConfiguration
-@SpringBootTest(classes = { Main.class, TestJmsOverrides.class }, // add our test-only JMS override
+@SpringBootTest(classes = { Main.class, TestJmsOverrides.class, TestDataSetup.class }, // add our test configurations
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Testcontainers

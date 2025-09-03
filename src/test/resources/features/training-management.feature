@@ -14,9 +14,13 @@ Feature: Microservices Integration via JMS
     Given a trainer "integration.trainer" exists
     And a trainee "integration.trainee" exists
     When I create a training with:
+      | trainerUsername   | traineeUsername   | trainingName      | duration | date       |
+      | integration.trainer | integration.trainee | Integration Test  | 60       | 2025-01-01 |
     Then the response status should be 201
     And a JMS message should be sent to the workload queue
     And the message should contain:
+      | value               |
+      | integration.trainer |
 
   @positive @async
   Scenario: Multiple trainings send multiple messages
@@ -30,4 +34,6 @@ Feature: Microservices Integration via JMS
   Scenario: Unauthenticated requests are rejected
     Given I am not authenticated
     When I create a training with:
+      | trainerUsername   | traineeUsername   | trainingName      | duration | date       |
+      | any.trainer       | any.trainee       | Security Test     | 30       | 2025-02-01 |
     Then the response status should be 401

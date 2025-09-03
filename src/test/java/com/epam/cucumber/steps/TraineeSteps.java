@@ -11,11 +11,11 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-import static io.restassured.RestAssured.*;
+import static io.restassured.RestAssured.baseURI;
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraineeSteps {
@@ -49,7 +49,7 @@ public class TraineeSteps {
 
     @When("I register a new trainee with:")
     public void iRegisterANewTraineeWith(DataTable table) {
-        Map<String, Object> body = table.asMap(String.class, Object.class);
+        Map<String, String> body = table.asMaps().get(0);
 
         Response response = reqAuthJson()
                 .body(body)

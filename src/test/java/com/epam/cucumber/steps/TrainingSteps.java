@@ -18,14 +18,14 @@ import org.awaitility.Awaitility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static io.restassured.RestAssured.*;
+import static io.restassured.RestAssured.baseURI;
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TrainingSteps {
@@ -63,7 +63,7 @@ public class TrainingSteps {
 
     @When("I create a training with:")
     public void iCreateTrainingWith(DataTable dataTable) {
-        Map<String, String> data = dataTable.asMap(String.class, String.class);
+        Map<String, String> data = dataTable.asMaps().get(0);
 
         AddTrainingRequest request = new AddTrainingRequest();
         request.setTrainerUsername(data.get("trainerUsername"));
