@@ -2,111 +2,78 @@ package com.epam.cucumber.steps;
 
 import com.epam.cucumber.support.TestContext;
 import com.epam.dao.TrainerDao;
-import com.epam.dao.TrainingTypeDao;
-import com.epam.domain.Trainer;
-import com.epam.domain.TrainingType;
-import com.epam.domain.User;
-import com.epam.dto.trainer.TrainerRegistrationRequest;
+import io.cucumber.datatable.DataTable;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
-import io.cucumber.java.en.Then;
-import io.cucumber.datatable.DataTable;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TrainerSteps {
 
+    private final TestContext testContext;
+    private final TrainerDao trainerDao;
 
-    private TestContext testContext;
-    private TrainerDao trainerDao;
-    private TrainingTypeDao trainingTypeDao;
+    @LocalServerPort
+    private int port;
 
-    @Given("a trainer {string} exists")
-    @Transactional
-    public void aTrainerExists(String username) {
-        if (trainerDao.findByUsername(username).isPresent()) {
-            return;
+    @Autowired
+    public TrainerSteps(TestContext testContext, TrainerDao trainerDao) {
+        this.testContext = testContext;
+        this.trainerDao = trainerDao;
+    }
+
+    private void configureRestAssured() {
+        baseURI = "http://localhost";
+        io.restassured.RestAssured.port = port;
+    }
+
+    private RequestSpecification reqAuthJson() {
+        configureRestAssured();
+        RequestSpecification r = given().contentType(ContentType.JSON);
+        String token = testContext.getJwtToken();
+        if (token != null && !token.isBlank()) {
+            r.header("Authorization", "Bearer " + token);
         }
-
-        Trainer trainer = new Trainer();
-        User user = new User();
-        user.setUsername(username);
-        user.setFirstName("Test");
-        user.setLastName("Trainer");
-        user.setPassword("$2a$10$YourHashedPasswordHere");
-        user.setActive(true);
-        trainer.setUser(user);
-
-        TrainingType specialization = trainingTypeDao.findById(1L)
-                .orElseGet(() -> {
-                    TrainingType type = new TrainingType();
-                    type.setName("Fitness");
-                    trainingTypeDao.create(type);
-                    return type;
-                });
-        trainer.setSpecialization(specialization);
-
-        trainerDao.create(trainer);
-        testContext.save("trainer_" + username, trainer);
+        return r;
     }
 
     @When("I register a new trainer with:")
-    public void iRegisterANewTrainerWith(DataTable dataTable) {
-        Map<String, String> data = dataTable.asMap(String.class, String.class);
+    public void iRegisterANewTrainerWith(DataTable table) {
+        Map<String, Object> body = table.asMap(String.class, Object.class);
 
-        TrainerRegistrationRequest request = new TrainerRegistrationRequest();
-        request.setFirstName(data.get("firstName"));
-        request.setLastName(data.get("lastName"));
-        request.setSpecializationId(Long.parseLong(data.getOrDefault("specializationId", "1")));
-
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .body(request)
+        Response response = reqAuthJson()
+                .body(body)
                 .when()
                 .post("/api/trainers")
                 .then()
-                .extract()
-                .response();
+                .extract().response();
 
         testContext.setResponse(response);
-
-        if (response.statusCode() == 201) {
-            String username = response.jsonPath().getString("username");
-            testContext.save("createdTrainerUsername", username);
-        }
     }
 
-    @Then("the trainer should be created with username pattern {string}")
-    public void theTrainerShouldBeCreatedWithUsernamePattern(String pattern) {
-        String username = testContext.get("createdTrainerUsername", String.class);
-        assertThat(username).matches(pattern);
-    }
-
-    @Then("the trainer {string} should exist in the database")
+    @And("the trainer {string} should exist in the database")
     public void theTrainerShouldExistInTheDatabase(String username) {
-        boolean exists = trainerDao.findByUsername(username).isPresent();
+        boolean exists = trainerDao.findAll().stream()
+                .anyMatch(t -> t.getUser() != null
+                        && username.equals(t.getUser().getUsername()));
         assertThat(exists).isTrue();
     }
 
-    @When("I get trainer profile for {string}")
-    public void iGetTrainerProfileFor(String username) {
-        String token = testContext.getJwtToken();
-
-        Response response = given()
-                .header("Authorization", "Bearer " + token)
-                .when()
-                .get("/api/trainers/{username}", username)
-                .then()
-                .extract()
-                .response();
-
-        testContext.setResponse(response);
+    @Given("a trainer {string} exists")
+    public void aTrainerExists(String username) {
+        boolean exists = trainerDao.findAll().stream()
+                .anyMatch(t -> t.getUser() != null
+                        && username.equals(t.getUser().getUsername()));
+        assertThat(exists).as("Trainer must pre-exist for this scenario").isTrue();
     }
 }

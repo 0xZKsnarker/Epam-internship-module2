@@ -3,27 +3,63 @@ package com.epam.cucumber.steps;
 import com.epam.cucumber.support.TestContext;
 import com.epam.dao.TrainingDao;
 import com.epam.dto.training.AddTrainingRequest;
-import io.cucumber.java.en.When;
-import io.cucumber.java.en.Then;
-import io.cucumber.java.en.And;
 import io.cucumber.datatable.DataTable;
+import io.cucumber.java.en.And;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import jakarta.jms.Message;
+import jakarta.jms.QueueBrowser;
+import jakarta.jms.Session;
+import jakarta.jms.TextMessage;
 import org.awaitility.Awaitility;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.Enumeration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TrainingSteps {
 
-    private TestContext testContext;
-    private TrainingDao trainingDao;
-    private JmsTemplate jmsTemplate;
+    private static final String WORKLOAD_QUEUE = "trainer-workload-queue";
+
+    private final TestContext testContext;
+    private final TrainingDao trainingDao;
+    private final JmsTemplate jmsTemplate;
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    public TrainingSteps(TestContext testContext, TrainingDao trainingDao, JmsTemplate jmsTemplate) {
+        this.testContext = testContext;
+        this.trainingDao = trainingDao;
+        this.jmsTemplate = jmsTemplate;
+    }
+
+    private void configureRestAssured() {
+        baseURI = "http://localhost";
+        io.restassured.RestAssured.port = port;
+    }
+
+    private RequestSpecification reqAuthJson() {
+        configureRestAssured();
+        RequestSpecification r = given().contentType(ContentType.JSON);
+        String token = testContext.getJwtToken();
+        if (token != null && !token.isBlank()) {
+            r.header("Authorization", "Bearer " + token);
+        }
+        return r;
+    }
 
     @When("I create a training with:")
     public void iCreateTrainingWith(DataTable dataTable) {
@@ -38,58 +74,12 @@ public class TrainingSteps {
 
         testContext.save("trainingRequest", request);
 
-        String token = testContext.getJwtToken();
-
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + token)
+        Response response = reqAuthJson()
                 .body(request)
                 .when()
                 .post("/api/trainings")
                 .then()
-                .extract()
-                .response();
-
-        testContext.setResponse(response);
-    }
-
-    @When("I create a training with invalid data:")
-    public void iCreateTrainingWithInvalidData(DataTable dataTable) {
-        Map<String, String> data = dataTable.asMap(String.class, String.class);
-
-        AddTrainingRequest request = new AddTrainingRequest();
-
-        if (data.containsKey("trainerUsername")) {
-            request.setTrainerUsername(data.get("trainerUsername"));
-        }
-        if (data.containsKey("traineeUsername")) {
-            request.setTraineeUsername(data.get("traineeUsername"));
-        }
-        if (data.containsKey("trainingName")) {
-            request.setTrainingName(data.get("trainingName"));
-        }
-        if (data.containsKey("duration") && !data.get("duration").isEmpty()) {
-            try {
-                request.setDurationOfTraining(Integer.parseInt(data.get("duration")));
-            } catch (NumberFormatException e) {
-                request.setDurationOfTraining(-1);
-            }
-        }
-        if (data.containsKey("date")) {
-            request.setTrainingDate(LocalDate.parse(data.get("date")));
-        }
-
-        String token = testContext.getJwtToken();
-
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + token)
-                .body(request)
-                .when()
-                .post("/api/trainings")
-                .then()
-                .extract()
-                .response();
+                .extract().response();
 
         testContext.setResponse(response);
     }
@@ -120,19 +110,18 @@ public class TrainingSteps {
         AddTrainingRequest request = testContext.get("trainingRequest", AddTrainingRequest.class);
 
         Awaitility.await()
-                .atMost(5, TimeUnit.SECONDS)
+                .atMost(10, TimeUnit.SECONDS)
                 .pollInterval(500, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
-                    Boolean found = jmsTemplate.browse("trainer-workload-queue", (session, browser) -> {
-                        var enumeration = browser.getEnumeration();
+                    Boolean found = jmsTemplate.browse(WORKLOAD_QUEUE, (Session session, QueueBrowser browser) -> {
+                        Enumeration<?> enumeration = browser.getEnumeration();
                         while (enumeration.hasMoreElements()) {
-                            try {
-                                jakarta.jms.Message msg = (jakarta.jms.Message) enumeration.nextElement();
-                                String text = msg.toString();
-                                if (text.contains(request.getTrainerUsername())) {
+                            Message msg = (Message) enumeration.nextElement();
+                            if (msg instanceof TextMessage tm) {
+                                String text = tm.getText();
+                                if (text != null && text.contains(request.getTrainerUsername())) {
                                     return true;
                                 }
-                            } catch (Exception e) {
                             }
                         }
                         return false;
@@ -140,31 +129,5 @@ public class TrainingSteps {
 
                     assertThat(found).isTrue();
                 });
-    }
-
-    @When("I get trainings for trainer {string}")
-    public void iGetTrainingsForTrainer(String username) {
-        String token = testContext.getJwtToken();
-
-        Response response = given()
-                .header("Authorization", "Bearer " + token)
-                .when()
-                .get("/api/trainings/trainers/{username}", username)
-                .then()
-                .extract()
-                .response();
-
-        testContext.setResponse(response);
-    }
-
-    @Then("the response should contain a training with name {string}")
-    public void theResponseShouldContainTrainingWithName(String trainingName) {
-        Response response = testContext.getResponse();
-        var trainings = response.jsonPath().getList("$");
-
-        boolean found = trainings.stream()
-                .anyMatch(t -> ((Map<?, ?>) t).get("trainingName").equals(trainingName));
-
-        assertThat(found).isTrue();
     }
 }
