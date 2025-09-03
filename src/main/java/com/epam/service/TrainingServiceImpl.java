@@ -44,6 +44,9 @@ public class TrainingServiceImpl implements TrainingService {
         this.workloadMessageProducer = workloadMessageProducer;
     }
 
+    public TrainingServiceImpl(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao, MeterRegistry realMeterRegistry, WorkloadServiceClient workloadServiceClient) {
+    }
+
     @Override
     @Transactional
     public Training create(Training training) {
