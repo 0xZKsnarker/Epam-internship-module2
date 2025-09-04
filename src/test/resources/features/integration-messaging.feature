@@ -11,19 +11,19 @@ Feature: Microservices Integration via JMS
 
   @positive @async
   Scenario Outline: Training creation sends workload update message
-    Given a trainer <username> exists
-    And a trainee <username1> exists
+    Given a trainer "<username>" exists
+    And a trainee "<username1>" exists
     When I create a training with:
-      | trainerUsername   | traineeUsername   | trainingName      | duration | date       |
-      | <username>        | <username1>       | Integration Test  | 60       | 2025-01-01 |
+      | trainerUsername | traineeUsername | trainingName     | duration | date       |
+      | <username>      | <username1>     | Integration Test | 60       | 2025-01-01 |
     Then the response status should be <expectedStatus>
     And a JMS message should be sent to the workload queue
     And the message should contain:
       | value      |
       | <username> |
     Examples:
-      | username              | username1             | expectedStatus |
-      | "integration.trainer" | "integration.trainee" | 201            |
+      | username            | username1           | expectedStatus |
+      | integration.trainer | integration.trainee | 201            |
 
   @positive @async
   Scenario: Multiple trainings send multiple messages
@@ -38,7 +38,7 @@ Feature: Microservices Integration via JMS
     Given I am not authenticated
     When I create a training with:
       | trainerUsername | traineeUsername | trainingName    | duration | date       |
-      | "any.trainer"   | "any.trainee"   | "Security Test" | 30       | 2025-02-01 |
+      | any.trainer     | any.trainee     | Security Test   | 30       | 2025-02-01 |
     Then the response status should be <expectedStatus>
     Examples:
       | expectedStatus |

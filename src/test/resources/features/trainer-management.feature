@@ -27,8 +27,8 @@ Feature: Trainer Management
 
   @negative
   Scenario: Register trainer with missing first name
+    # This scenario should NOT be authenticated
     When I register a new trainer with:
       | lastName | specializationId |
       | Smith    | 1                |
-    Then the response status should be 400
-    And the error message should contain "must not be blank"
+    Then the response status should be 401

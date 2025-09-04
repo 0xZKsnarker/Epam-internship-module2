@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.stream.Collectors;
 
 
-@RequestMapping("api/trainers")
+@RequestMapping("/api/trainers")
 @RestController
 public class TrainerController {
 

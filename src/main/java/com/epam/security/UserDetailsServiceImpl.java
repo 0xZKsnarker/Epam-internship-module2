@@ -3,6 +3,7 @@ package com.epam.security;
 import com.epam.dao.TraineeDao;
 import com.epam.dao.TrainerDao;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,22 +29,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new RuntimeException("Blocked for too many attempts");
         }
 
-
-        com.epam.domain.User domainUser = traineeDao.findByUsername(username)
-                .map(t -> t.getUser())
-                .orElseGet(() ->
-                        trainerDao.findByUsername(username)
-                                .map(t -> t.getUser())
-                                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username))
+        // Determine if the user is a trainee or a trainer
+        return traineeDao.findByUsername(username)
+                .map(trainee -> createUserDetails(trainee.getUser(), "ROLE_TRAINEE"))
+                .orElseGet(() -> trainerDao.findByUsername(username)
+                        .map(trainer -> createUserDetails(trainer.getUser(), "ROLE_TRAINER"))
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username))
                 );
+    }
 
-
+    private UserDetails createUserDetails(com.epam.domain.User domainUser, String role) {
         return new org.springframework.security.core.userdetails.User(
                 domainUser.getUsername(),
                 domainUser.getPassword(),
                 domainUser.isActive(),
                 true, true, true,
-                java.util.Collections.emptyList()
+                java.util.Collections.singletonList(new SimpleGrantedAuthority(role))
         );
     }
 }
