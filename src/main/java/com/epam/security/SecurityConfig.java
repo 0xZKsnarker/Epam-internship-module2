@@ -49,14 +49,9 @@ public class SecurityConfig {
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Define all public endpoints first. Order is critical.
                         .requestMatchers("/actuator/**", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/trainees", "/api/trainers").permitAll()
-
-                        // 2. Secure all other API endpoints. This rule will now apply to everything else under /api/.
                         .requestMatchers("/api/**").authenticated()
-
-                        // 3. As a security best practice, explicitly deny any other request not matched above.
                         .anyRequest().denyAll()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -62,7 +62,7 @@ public class CommonSteps {
 
         Map<String, String> body = Map.of(
                 "username", username,
-                "password", "admin" // adjust if your seeded admin password differs
+                "password", "admin"
         );
 
         Response response = given()

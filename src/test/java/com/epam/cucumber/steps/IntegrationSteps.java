@@ -75,7 +75,6 @@ public class IntegrationSteps {
 
     @And("ActiveMQ is available")
     public void activeMQIsAvailable() {
-        // Quick sanity send/browse to ensure broker is up
         String pingQueue = "test-activemq-health";
         jmsTemplate.convertAndSend(pingQueue, "ping");
         Boolean found = jmsTemplate.browse(pingQueue, (Session s, QueueBrowser b) -> b.getEnumeration().hasMoreElements());
@@ -89,7 +88,6 @@ public class IntegrationSteps {
 
         for (int i = 0; i < count; i++) {
             AddTrainingRequest reqBody = new AddTrainingRequest();
-            // Expect these to have been set up by other steps:
             Map<String, String> defaults = Map.of(
                     "trainerUsername", "batch.trainer",
                     "traineeUsername", "batch.trainee",

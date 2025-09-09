@@ -42,12 +42,10 @@ public class TestDataSetup {
                 return type;
             });
 
-        // Create all required test trainers
         String[] trainerUsernames = {"admin", "integration.trainer", "batch.trainer", "Jane.Doe"};
         
         for (String username : trainerUsernames) {
             if (!trainerDao.findByUsername(username).isPresent()) {
-                // Create user
                 User user = new User();
                 user.setUsername(username);
                 user.setPassword(passwordEncoder.encode("admin"));
@@ -55,7 +53,6 @@ public class TestDataSetup {
                 user.setLastName(username.contains(".") ? username.split("\\.")[1] : "User");
                 user.setActive(true);
 
-                // Create trainer with user
                 Trainer trainer = new Trainer();
                 trainer.setUser(user);
                 trainer.setSpecialization(defaultType);
@@ -64,7 +61,6 @@ public class TestDataSetup {
             }
         }
 
-        // Create all required test trainees
         String[] traineeUsernames = {"integration.trainee", "batch.trainee"};
         
         for (String username : traineeUsernames) {

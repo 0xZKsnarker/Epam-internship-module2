@@ -36,15 +36,11 @@ public class TrainerSteps {
     private void configureRestAssured() {
         baseURI = "http://localhost";
         io.restassured.RestAssured.port = port;
-        // Disable following redirects
         io.restassured.RestAssured.config = io.restassured.RestAssured.config()
                 .redirect(io.restassured.config.RedirectConfig.redirectConfig().followRedirects(false));
     }
 
-    /**
-     * Creates a request specification without authentication
-     * Used for public endpoints like registration
-     */
+
     private RequestSpecification reqJson() {
         configureRestAssured();
         return given()
@@ -52,9 +48,7 @@ public class TrainerSteps {
                 .log().ifValidationFails(LogDetail.ALL); // Add logging for debugging
     }
 
-    /**
-     * Creates a request specification with authentication (if token exists)
-     */
+
     private RequestSpecification reqAuthJson() {
         configureRestAssured();
         RequestSpecification spec = given()
@@ -73,23 +67,16 @@ public class TrainerSteps {
     public void iRegisterANewTrainerWith(DataTable table) {
         Map<String, String> body = table.asMaps().get(0);
 
-        // Use reqJson() for registration - no authentication needed
-        // Also disable validation failure throwing to capture the actual response
+
         Response response = reqJson()
                 .body(body)
                 .when()
                 .post("/api/trainers")
                 .then()
-                .log().ifValidationFails(LogDetail.ALL) // Log response on failure
+                .log().ifValidationFails(LogDetail.ALL)
                 .extract().response();
 
-        // Debug logging
-        System.out.println("=== DEBUG: Registration Response ===");
-        System.out.println("Status Code: " + response.getStatusCode());
-        System.out.println("Status Line: " + response.getStatusLine());
-        System.out.println("Headers: " + response.getHeaders());
-        System.out.println("Body: " + response.getBody().asString());
-        System.out.println("=====================================");
+
 
         testContext.setResponse(response);
     }
